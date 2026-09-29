@@ -1344,3 +1344,161 @@ about.addEventListener(
 
     }
 );
+
+
+/* ============================================================
+   INDEX PROJECT NAVIGATION
+   ============================================================ */
+
+const indexRows = document.querySelectorAll(
+    '.index-row[data-project]'
+);
+
+indexRows.forEach((row) => {
+
+    row.addEventListener('click', (event) => {
+
+        event.stopPropagation();
+
+        const projectIndex =
+            Number(row.dataset.project);
+
+        const totalProjects =
+            mediaGroups.length;
+
+        if (!totalProjects) {
+            return;
+        }
+
+
+        /*
+         * CURRENT PROJECT
+         */
+        const currentProject =
+            getActiveProject(
+                targetPosition
+            );
+
+
+        /*
+         * SHORTEST DISTANCE
+         * THROUGH THE INFINITE LOOP
+         */
+        let difference =
+            projectIndex - currentProject;
+
+
+        if (
+            difference >
+            totalProjects / 2
+        ) {
+
+            difference -=
+                totalProjects;
+
+        }
+
+
+        if (
+            difference <
+            -totalProjects / 2
+        ) {
+
+            difference +=
+                totalProjects;
+
+        }
+
+
+        /*
+         * START POSITION
+         */
+        const startPosition =
+            currentPosition;
+
+
+        /*
+         * FINAL POSITION
+         */
+        const finalPosition =
+            targetPosition + difference;
+
+
+        /*
+         * MOMENTUM ANIMATION
+         */
+        const duration = 750;
+
+        const startTime =
+            performance.now();
+
+
+        function animateToProject(time) {
+
+            const elapsed =
+                time - startTime;
+
+            const progress =
+                Math.min(
+                    elapsed / duration,
+                    1
+                );
+
+
+            /*
+             * EASE IN OUT
+             *
+             * slow → fast → slow
+             */
+            const eased =
+                progress < 0.5
+                    ? 4 * progress * progress * progress
+                    : 1 -
+                      Math.pow(
+                          -2 * progress + 2,
+                          3
+                      ) / 2;
+
+
+            targetPosition =
+                startPosition +
+                (
+                    finalPosition -
+                    startPosition
+                ) *
+                eased;
+
+
+            /*
+             * RESET MEDIA
+             */
+            targetMediaPosition = 0;
+            currentMediaPosition = 0;
+
+
+            startRender();
+
+
+            if (progress < 1) {
+
+                requestAnimationFrame(
+                    animateToProject
+                );
+
+            } else {
+
+                targetPosition =
+                    finalPosition;
+
+            }
+
+        }
+
+
+        requestAnimationFrame(
+            animateToProject
+        );
+
+    });
+
+});
