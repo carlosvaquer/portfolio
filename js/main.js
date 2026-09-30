@@ -1354,19 +1354,57 @@ const indexRows = document.querySelectorAll(
     '.index-row[data-project]'
 );
 
+
+/*
+ * INDEX ID → MAIN SCREEN ID
+ *
+ * El Index mantiene sus IDs originales,
+ * pero los proyectos de la pantalla principal
+ * tienen un orden diferente.
+ */
+const indexToScreenProject = {
+    0: 4, // Gorka Larcan
+    5: 1, // Aina Monzó
+    4: 3, // Artántida
+    3: 0, // Javier Camps
+    6: 5, // Rubén Segovia
+    2: 6, // Luzia Orts
+    1: 2  // 3D Modeling
+};
+
+
 indexRows.forEach((row) => {
 
     row.addEventListener('click', (event) => {
 
         event.stopPropagation();
 
-        const projectIndex =
+
+        /*
+         * ID DEL INDEX
+         */
+        const indexProjectIndex =
             Number(row.dataset.project);
+
+
+        /*
+         * CONVERTIMOS EL ID DEL INDEX
+         * AL ID REAL DE LA PANTALLA
+         */
+        const projectIndex =
+            indexToScreenProject[
+                indexProjectIndex
+            ];
+
 
         const totalProjects =
             mediaGroups.length;
 
-        if (!totalProjects) {
+
+        if (
+            !totalProjects ||
+            projectIndex === undefined
+        ) {
             return;
         }
 
@@ -1385,7 +1423,8 @@ indexRows.forEach((row) => {
          * THROUGH THE INFINITE LOOP
          */
         let difference =
-            projectIndex - currentProject;
+            projectIndex -
+            currentProject;
 
 
         if (
@@ -1421,7 +1460,8 @@ indexRows.forEach((row) => {
          * FINAL POSITION
          */
         const finalPosition =
-            targetPosition + difference;
+            targetPosition +
+            difference;
 
 
         /*
@@ -1438,6 +1478,7 @@ indexRows.forEach((row) => {
             const elapsed =
                 time - startTime;
 
+
             const progress =
                 Math.min(
                     elapsed / duration,
@@ -1452,7 +1493,10 @@ indexRows.forEach((row) => {
              */
             const eased =
                 progress < 0.5
-                    ? 4 * progress * progress * progress
+                    ? 4 *
+                      progress *
+                      progress *
+                      progress
                     : 1 -
                       Math.pow(
                           -2 * progress + 2,
@@ -1479,7 +1523,9 @@ indexRows.forEach((row) => {
             startRender();
 
 
-            if (progress < 1) {
+            if (
+                progress < 1
+            ) {
 
                 requestAnimationFrame(
                     animateToProject
