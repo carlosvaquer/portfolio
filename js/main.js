@@ -34,6 +34,7 @@ const about =
 const aboutMenu =
     document.querySelector('.about-menu');
 
+
 const radius = 300;
 
 const angleStep = 25;
@@ -56,6 +57,7 @@ const mediaSmoothness = 0.14;
 
 const mediaSnapDelay = 120;
 
+
 let currentPosition = 0;
 
 let targetPosition = 0;
@@ -71,7 +73,7 @@ let projectSnapTimeout = null;
 let mediaSnapTimeout = null;
 
 
-/* CACHE DE MEDIA */
+/* CACHE PRINCIPAL DE MEDIA */
 
 const mediaByProject =
     Array.from(
@@ -93,200 +95,312 @@ const videosByProject =
             )
     );
 
-let previousVideoProject = -1;
 
-let previousVideoMedia = -1;
+/* CACHE DE PREVIEWS MOBILE */
+
+const mobilePreviewCache =
+    new Map();
 
 
-/* UTILIDADES DE MEDIA */
+const mobilePreviewCacheHost =
+    document.createElement('div');
 
-function getCenteredMediaIndex(
-    position,
-    totalMedia
+
+mobilePreviewCacheHost.className =
+    'mobile-preview-cache';
+
+
+Object.assign(
+    mobilePreviewCacheHost.style,
+    {
+        position:
+            'fixed',
+
+        left:
+            '-10000px',
+
+        top:
+            '0',
+
+        width:
+            '1px',
+
+        height:
+            '1px',
+
+        overflow:
+            'hidden',
+
+        opacity:
+            '0',
+
+        pointerEvents:
+            'none',
+
+        zIndex:
+            '-1'
+    }
+);
+
+
+document.body.appendChild(
+    mobilePreviewCacheHost
+);
+
+
+function hideCachedMedia(
+    media
 ) {
 
-    if (!totalMedia) {
-        return 0;
-    }
+    media.style.position =
+        'absolute';
 
-    let index =
-        Math.round(position);
+    media.style.left =
+        '0';
 
-    index =
-        (
-            (
-                index %
-                totalMedia
-            ) +
-            totalMedia
-        ) %
-        totalMedia;
+    media.style.top =
+        '0';
 
-    return index;
-}
+    media.style.width =
+        '1px';
 
+    media.style.height =
+        '1px';
 
-function prepareMainVideos() {
+    media.style.maxWidth =
+        'none';
 
-    videosByProject.forEach(
-        videos => {
+    media.style.transform =
+        'none';
 
-            videos.forEach(
-                video => {
+    media.style.opacity =
+        '0';
 
-                    video.muted = true;
+    media.style.filter =
+        'none';
 
-                    video.loop = true;
+    media.style.zIndex =
+        '0';
 
-                    video.playsInline = true;
-
-                    video.removeAttribute(
-                        'autoplay'
-                    );
-
-                    video.preload = 'none';
-
-                    video.pause();
-
-                }
-            );
-
-        }
-    );
+    media.style.pointerEvents =
+        'none';
 
 }
 
 
-function pauseAllMainVideos() {
-
-    videosByProject.forEach(
-        videos => {
-
-            videos.forEach(
-                video => {
-
-                    video.pause();
-
-                }
-            );
-
-        }
-    );
-
-}
-
-
-function playVideo(video) {
-
-    if (!video) {
-        return;
-    }
-
-    video.muted = true;
-
-    video.loop = true;
-
-    video.playsInline = true;
-
-    video.preload = 'auto';
-
-    if (
-        video.readyState <
-        HTMLMediaElement.HAVE_CURRENT_DATA
-    ) {
-
-        video.load();
-
-    }
-
-    video.play().catch(
-        () => {}
-    );
-
-}
-
-
-function syncMainVideos(
+function createMobilePreviewCache(
     projectIndex,
-    mediaIndex
+    priority = false
 ) {
 
-    const isMobile =
-        window.innerWidth <= 768;
-
     if (
-        isMobile &&
-        projectIndex ===
-            previousVideoProject &&
-        mediaIndex ===
-            previousVideoMedia
+        mobilePreviewCache.has(
+            projectIndex
+        )
     ) {
 
-        return;
-
-    }
-
-    if (
-        !isMobile &&
-        projectIndex ===
-            previousVideoProject
-    ) {
-
-        return;
-
-    }
-
-    previousVideoProject =
-        projectIndex;
-
-    previousVideoMedia =
-        mediaIndex;
-
-    pauseAllMainVideos();
-
-    if (isMobile) {
-
-        const media =
-            mediaByProject[
+        const cached =
+            mobilePreviewCache.get(
                 projectIndex
-            ]?.[
-                mediaIndex
-            ];
+            );
+
 
         if (
-            media &&
-            media.tagName ===
-                'VIDEO'
+            priority &&
+            !cached.priority
         ) {
 
-            playVideo(media);
+            cached.priority =
+                true;
+
+
+            cached.media.forEach(
+                media => {
+
+                    if (
+                        media.tagName !==
+                        'VIDEO'
+                    ) {
+
+                        return;
+                    }
+
+
+                    media.preload =
+                        'auto';
+
+
+                    if (
+                        media.readyState <
+                        HTMLMediaElement
+                            .HAVE_METADATA
+                    ) {
+
+                        media.load();
+
+                    }
+
+                }
+            );
 
         }
 
-        return;
 
+        return cached;
     }
 
-    const videos =
-        videosByProject[
+
+    const sourceMedia =
+        mediaByProject[
             projectIndex
-        ] || [];
+        ]?.slice(
+            0,
+            3
+        );
 
-    videos.forEach(
-        video => {
 
-            playVideo(video);
+    if (
+        !sourceMedia ||
+        !sourceMedia.length
+    ) {
+
+        return null;
+    }
+
+
+    const cachedMedia = [];
+
+
+    sourceMedia.forEach(
+        source => {
+
+            const clone =
+                source.cloneNode(
+                    true
+                );
+
+
+            clone.classList.add(
+                'mobile-neighbor-preview'
+            );
+
+
+            clone.removeAttribute(
+                'id'
+            );
+
+
+            if (
+                clone.tagName ===
+                'VIDEO'
+            ) {
+
+                clone.muted =
+                    true;
+
+                clone.loop =
+                    true;
+
+                clone.playsInline =
+                    true;
+
+                clone.autoplay =
+                    false;
+
+                clone.removeAttribute(
+                    'autoplay'
+                );
+
+                clone.setAttribute(
+                    'muted',
+                    ''
+                );
+
+                clone.setAttribute(
+                    'loop',
+                    ''
+                );
+
+                clone.setAttribute(
+                    'playsinline',
+                    ''
+                );
+
+
+                clone.preload =
+                    priority
+                        ? 'auto'
+                        : 'metadata';
+
+
+                clone.setAttribute(
+                    'preload',
+                    clone.preload
+                );
+
+            } else {
+
+                clone.loading =
+                    'eager';
+
+                clone.decoding =
+                    'async';
+
+            }
+
+
+            hideCachedMedia(
+                clone
+            );
+
+
+            mobilePreviewCacheHost.appendChild(
+                clone
+            );
+
+
+            cachedMedia.push(
+                clone
+            );
+
+
+            if (
+                clone.tagName ===
+                'VIDEO'
+            ) {
+
+                clone.load();
+
+            }
 
         }
     );
 
+
+    const cached = {
+
+        media:
+            cachedMedia,
+
+        priority:
+            priority
+
+    };
+
+
+    mobilePreviewCache.set(
+        projectIndex,
+        cached
+    );
+
+
+    return cached;
+
 }
 
 
-/* PRELOAD DOS PROYECTOS COLINDANTES */
-
-function primeMobilePreviewProject(
-    projectIndex
+function prepareMobilePreviewRing(
+    position
 ) {
 
     if (
@@ -298,135 +412,205 @@ function primeMobilePreviewProject(
 
     }
 
-    const media =
-        mediaByProject[
-            projectIndex
-        ];
 
-    if (!media) {
+    const totalProjects =
+        mediaGroups.length;
+
+
+    if (!totalProjects) {
         return;
     }
 
-    media
-        .slice(
-            0,
-            3
-        )
-        .forEach(
-            source => {
+
+    const activeProject =
+        getActiveProject(
+            position
+        );
+
+
+    const previousProject =
+        (
+            activeProject -
+            1 +
+            totalProjects
+        ) %
+        totalProjects;
+
+
+    const nextProject =
+        (
+            activeProject +
+            1
+        ) %
+        totalProjects;
+
+
+    const previousPreviousProject =
+        (
+            activeProject -
+            2 +
+            totalProjects * 2
+        ) %
+        totalProjects;
+
+
+    const nextNextProject =
+        (
+            activeProject +
+            2
+        ) %
+        totalProjects;
+
+
+    createMobilePreviewCache(
+        previousProject,
+        true
+    );
+
+
+    createMobilePreviewCache(
+        nextProject,
+        true
+    );
+
+
+    createMobilePreviewCache(
+        previousPreviousProject,
+        true
+    );
+
+
+    createMobilePreviewCache(
+        nextNextProject,
+        true
+    );
+
+}
+
+
+function warmRemainingMobileProjects() {
+
+    if (
+        window.innerWidth >
+        768
+    ) {
+
+        return;
+
+    }
+
+
+    const totalProjects =
+        mediaGroups.length;
+
+
+    if (!totalProjects) {
+        return;
+    }
+
+
+    const activeProject =
+        getActiveProject(
+            targetPosition
+        );
+
+
+    const priorityProjects =
+        new Set();
+
+
+    for (
+        let offset = -2;
+        offset <= 2;
+        offset++
+    ) {
+
+        let index =
+            (
+                activeProject +
+                offset +
+                totalProjects * 2
+            ) %
+            totalProjects;
+
+
+        priorityProjects.add(
+            index
+        );
+
+    }
+
+
+    let projectIndex = 0;
+
+
+    const warmNext =
+        () => {
+
+            while (
+                projectIndex <
+                totalProjects
+            ) {
+
+                const current =
+                    projectIndex++;
 
                 if (
-                    source.tagName ===
-                    'IMG'
+                    priorityProjects.has(
+                        current
+                    )
                 ) {
 
-                    source.loading =
-                        'eager';
-
-                    source.decoding =
-                        'async';
-
-                    return;
+                    continue;
 
                 }
 
-                source.muted =
-                    true;
 
-                source.loop =
-                    true;
-
-                source.playsInline =
-                    true;
-
-                source.removeAttribute(
-                    'autoplay'
+                createMobilePreviewCache(
+                    current,
+                    false
                 );
 
-                source.preload =
-                    'auto';
+
+                break;
+
+            }
+
+
+            if (
+                projectIndex <
+                totalProjects
+            ) {
 
                 if (
-                    source.networkState ===
-                    HTMLMediaElement
-                        .NETWORK_EMPTY
+                    typeof window.requestIdleCallback ===
+                    'function'
                 ) {
 
-                    source.load();
+                    window.requestIdleCallback(
+                        warmNext
+                    );
+
+                } else {
+
+                    setTimeout(
+                        warmNext,
+                        40
+                    );
 
                 }
 
             }
-        );
+
+        };
+
+
+    warmNext();
 
 }
 
 
-/* PRELOAD DEL SIGUIENTE VIDEO */
-
-function primeMobileProjectAhead(
-    projectIndex
-) {
-
-    if (
-        window.innerWidth >
-        768
-    ) {
-
-        return;
-
-    }
-
-    const media =
-        mediaByProject[
-            projectIndex
-        ];
-
-    if (!media) {
-        return;
-    }
-
-    const firstVideo =
-        media.find(
-            item =>
-                item.tagName ===
-                'VIDEO'
-        );
-
-    if (!firstVideo) {
-        return;
-    }
-
-    firstVideo.muted =
-        true;
-
-    firstVideo.loop =
-        true;
-
-    firstVideo.playsInline =
-        true;
-
-    firstVideo.removeAttribute(
-        'autoplay'
-    );
-
-    firstVideo.preload =
-        'auto';
-
-    if (
-        firstVideo.networkState ===
-        HTMLMediaElement
-            .NETWORK_EMPTY
-    ) {
-
-        firstVideo.load();
-
-    }
-
-}
-
-
-/* PROYECTOS */
+/* PROJECT UTILS */
 
 function getActiveProject(
     position
@@ -435,12 +619,17 @@ function getActiveProject(
     const totalProjects =
         mediaGroups.length;
 
+
     if (!totalProjects) {
         return 0;
     }
 
+
     let index =
-        Math.round(position);
+        Math.round(
+            position
+        );
+
 
     index =
         (
@@ -451,6 +640,7 @@ function getActiveProject(
             totalProjects
         ) %
         totalProjects;
+
 
     return index;
 
@@ -464,7 +654,9 @@ function getRelativeIndex(
 ) {
 
     let relativeIndex =
-        index - position;
+        index -
+        position;
+
 
     while (
         relativeIndex >
@@ -476,6 +668,7 @@ function getRelativeIndex(
 
     }
 
+
     while (
         relativeIndex <
         -totalItems / 2
@@ -485,6 +678,7 @@ function getRelativeIndex(
             totalItems;
 
     }
+
 
     return relativeIndex;
 
@@ -496,7 +690,10 @@ function getOpacity(
 ) {
 
     const absDistance =
-        Math.abs(distance);
+        Math.abs(
+            distance
+        );
+
 
     if (
         absDistance <= 1
@@ -512,6 +709,7 @@ function getOpacity(
 
     }
 
+
     if (
         absDistance <= 2
     ) {
@@ -520,13 +718,15 @@ function getOpacity(
             0.25 -
             (
                 (
-                    absDistance - 1
+                    absDistance -
+                    1
                 ) *
                 0.10
             )
         );
 
     }
+
 
     if (
         absDistance <= 3
@@ -536,7 +736,8 @@ function getOpacity(
             0.15 -
             (
                 (
-                    absDistance - 2
+                    absDistance -
+                    2
                 ) *
                 0.10
             )
@@ -544,63 +745,121 @@ function getOpacity(
 
     }
 
+
     return 0.05;
 
 }
 
 
-/* INFORMACION MOBILE */
+/* MOBILE PROJECT DATA */
 
 const mobileProjectData = {
 
     0: {
-        title: 'Javier Camps',
-        category: 'Visual Identity',
-        year: '2025',
-        url: 'https://javiercamps.com'
+        title:
+            'Javier Camps',
+
+        category:
+            'Visual Identity',
+
+        year:
+            '2025',
+
+        url:
+            'https://javiercamps.com'
     },
+
 
     1: {
-        title: 'Aina Monzó',
-        category: 'Online Jewellery Shop',
-        year: '2026',
-        url: 'https://ainamonzo.com'
+        title:
+            'Aina Monzó',
+
+        category:
+            'Online Jewellery Shop',
+
+        year:
+            '2026',
+
+        url:
+            'https://ainamonzo.com'
     },
+
 
     2: {
-        title: '3D Modeling',
-        category: 'Design + 3D Animation',
-        year: '2022',
-        url: 'https://www.instagram.com/vaqkr.3d'
+        title:
+            '3D Modeling',
+
+        category:
+            'Design + 3D Animation',
+
+        year:
+            '2022',
+
+        url:
+            'https://www.instagram.com/vaqkr.3d'
     },
+
 
     3: {
-        title: 'Artántida',
-        category: 'Event Platform',
-        year: '2026',
-        url: 'https://artantida.com'
+        title:
+            'Artántida',
+
+        category:
+            'Event Platform',
+
+        year:
+            '2026',
+
+        url:
+            'https://artantida.com'
     },
+
 
     4: {
-        title: 'Gorka Larcan',
-        category: 'Visual Identity',
-        year: '2026',
-        wip: true,
-        url: 'https://gorkalarcan.com'
+        title:
+            'Gorka Larcan',
+
+        category:
+            'Visual Identity',
+
+        year:
+            '2026',
+
+        wip:
+            true,
+
+        url:
+            'https://gorkalarcan.com'
     },
+
 
     5: {
-        title: 'Rubén Segovia',
-        category: 'Visual Identity',
-        year: '2025',
-        url: 'https://rubensegovia.com/'
+        title:
+            'Rubén Segovia',
+
+        category:
+            'Visual Identity',
+
+        year:
+            '2025',
+
+        url:
+            'https://rubensegovia.com/'
     },
 
+
     6: {
-        title: 'Luzia Orts',
-        category: 'Photography Portfolio',
-        year: '2025',
-        url: 'https://luziaorts.com'
+        title:
+            'Luzia Orts',
+
+        category:
+            'Photography Portfolio',
+
+        year:
+            '2025',
+
+        url:
+            'https://luziaorts.com'
     }
 
 };
@@ -619,66 +878,107 @@ let mobileNextNeighbor =
     null;
 
 
-/* INFO DEL PROYECTO ACTIVO */
+/* MOBILE INFO */
 
 function createMobileProjectInfo() {
 
     mobileProjectInfo =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
+
 
     mobileProjectInfo.className =
         'mobile-project-info';
 
+
     const copy =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
+
 
     copy.className =
         'mobile-project-copy';
 
+
     const title =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
+
 
     title.className =
         'mobile-project-title';
 
+
     const category =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
+
 
     category.className =
         'mobile-project-category';
 
+
     const year =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
+
 
     year.className =
         'mobile-project-year';
 
+
     const wip =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
+
 
     wip.className =
         'mobile-project-wip';
 
-    copy.appendChild(title);
 
-    copy.appendChild(category);
+    copy.appendChild(
+        title
+    );
 
-    copy.appendChild(year);
 
-    copy.appendChild(wip);
+    copy.appendChild(
+        category
+    );
+
+
+    copy.appendChild(
+        year
+    );
+
+
+    copy.appendChild(
+        wip
+    );
 
 
     const link =
-        document.createElement('a');
+        document.createElement(
+            'a'
+        );
+
 
     link.className =
         'mobile-project-link project-link';
 
+
     link.textContent =
         'View Site';
 
+
     link.target =
         '_blank';
+
 
     link.rel =
         'noopener noreferrer';
@@ -688,9 +988,11 @@ function createMobileProjectInfo() {
         copy
     );
 
+
     mobileProjectInfo.appendChild(
         link
     );
+
 
     mainElement.appendChild(
         mobileProjectInfo
@@ -703,38 +1005,49 @@ function updateMobileProjectInfo(
     projectIndex
 ) {
 
-    if (!mobileProjectInfo) {
+    if (
+        !mobileProjectInfo
+    ) {
+
         return;
+
     }
+
 
     const project =
         mobileProjectData[
             projectIndex
         ];
 
+
     if (!project) {
         return;
     }
+
 
     const title =
         mobileProjectInfo.querySelector(
             '.mobile-project-title'
         );
 
+
     const category =
         mobileProjectInfo.querySelector(
             '.mobile-project-category'
         );
+
 
     const year =
         mobileProjectInfo.querySelector(
             '.mobile-project-year'
         );
 
+
     const wip =
         mobileProjectInfo.querySelector(
             '.mobile-project-wip'
         );
+
 
     const link =
         mobileProjectInfo.querySelector(
@@ -745,16 +1058,20 @@ function updateMobileProjectInfo(
     title.textContent =
         project.title;
 
+
     category.textContent =
         project.category;
 
+
     year.textContent =
         project.year;
+
 
     wip.textContent =
         project.wip
             ? 'WIP'
             : '';
+
 
     link.href =
         project.url ||
@@ -763,28 +1080,37 @@ function updateMobileProjectInfo(
 }
 
 
-/* VECINOS */
+/* MOBILE NEIGHBOR */
 
 function createMobileNeighbor(
     position
 ) {
 
     const neighbor =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
+
 
     neighbor.className =
         `mobile-neighbor mobile-neighbor-${position}`;
 
 
     const media =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
+
 
     media.className =
         'mobile-neighbor-media';
 
 
     const title =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
+
 
     title.className =
         'mobile-neighbor-title';
@@ -794,9 +1120,11 @@ function createMobileNeighbor(
         media
     );
 
+
     neighbor.appendChild(
         title
     );
+
 
     mobileNeighborLayer.appendChild(
         neighbor
@@ -804,6 +1132,7 @@ function createMobileNeighbor(
 
 
     return {
+
         element:
             neighbor,
 
@@ -815,7 +1144,76 @@ function createMobileNeighbor(
 
         project:
             null
+
     };
+
+}
+
+
+function returnNeighborMediaToCache(
+    neighbor
+) {
+
+    if (
+        !neighbor ||
+        neighbor.project ===
+            null
+    ) {
+
+        return;
+
+    }
+
+
+    const cached =
+        mobilePreviewCache.get(
+            neighbor.project
+        );
+
+
+    if (
+        !cached
+    ) {
+
+        return;
+
+    }
+
+
+    const visibleMedia =
+        Array.from(
+            neighbor.media.children
+        );
+
+
+    visibleMedia.forEach(
+        media => {
+
+            if (
+                media.tagName ===
+                'VIDEO'
+            ) {
+
+                media.pause();
+
+            }
+
+
+            hideCachedMedia(
+                media
+            );
+
+
+            mobilePreviewCacheHost.appendChild(
+                media
+            );
+
+        }
+    );
+
+
+    neighbor.media.innerHTML =
+        '';
 
 }
 
@@ -826,27 +1224,45 @@ function setMobileNeighbor(
 ) {
 
     if (
-        !neighbor ||
-        neighbor.project ===
-            projectIndex
+        !neighbor
     ) {
 
         return;
 
     }
 
-    const media =
-        mediaByProject[
-            projectIndex
-        ];
+
+    if (
+        neighbor.project ===
+        projectIndex &&
+        neighbor.media.children.length
+    ) {
+
+        return;
+
+    }
+
+
+    returnNeighborMediaToCache(
+        neighbor
+    );
+
+
+    const cached =
+        createMobilePreviewCache(
+            projectIndex,
+            true
+        );
+
 
     const project =
         mobileProjectData[
             projectIndex
         ];
 
+
     if (
-        !media ||
+        !cached ||
         !project
     ) {
 
@@ -855,17 +1271,12 @@ function setMobileNeighbor(
     }
 
 
-    neighbor.media.innerHTML =
-        '';
-
     neighbor.project =
         projectIndex;
 
+
     neighbor.title.textContent =
         project.title;
-
-    neighbor.element.style.left = '50%';
-    neighbor.element.style.transform = 'translateX(-50%)';
 
 
     const mobileSpacing =
@@ -876,103 +1287,18 @@ function setMobileNeighbor(
         );
 
 
-    const previewMedia =
-        media.slice(
-            0,
-            3
-        );
-
-
-    previewMedia.forEach(
+    cached.media.forEach(
         (
-            source,
+            media,
             index
         ) => {
 
-            const clone =
-                source.cloneNode(
-                    true
-                );
-
-            clone.classList.add(
-                'mobile-neighbor-preview'
-            );
-
-            clone.removeAttribute(
-                'id'
-            );
-
-
-            const isVideo =
-                clone.tagName ===
-                'VIDEO';
-
-
-            if (isVideo) {
-
-                clone.muted =
-                    true;
-
-                clone.loop =
-                    true;
-
-                clone.playsInline =
-                    true;
-
-                clone.removeAttribute(
-                    'autoplay'
-                );
-
-                clone.autoplay =
-                    false;
-
-                clone.preload =
-                    'auto';
-
-                clone.setAttribute(
-                    'muted',
-                    ''
-                );
-
-                clone.setAttribute(
-                    'loop',
-                    ''
-                );
-
-                clone.setAttribute(
-                    'playsinline',
-                    ''
-                );
-
-            } else {
-
-                clone.loading =
-                    'eager';
-
-                clone.decoding =
-                    'async';
-
-            }
-
-
-            let relativeIndex =
-                0;
-
-
-            if (index === 1) {
-
-                relativeIndex =
-                    1;
-
-            }
-
-
-            if (index === 2) {
-
-                relativeIndex =
-                    -1;
-
-            }
+            const relativeIndex =
+                index === 0
+                    ? 0
+                    : index === 1
+                        ? 1
+                        : -1;
 
 
             const x =
@@ -987,127 +1313,150 @@ function setMobileNeighbor(
 
 
             const scale =
-                distance === 0
-                    ? 1
-                    : 0.82;
+                Math.pow(
+                    mediaScale,
+                    distance
+                );
 
 
-            clone.style.position =
+            media.style.position =
                 'absolute';
 
-            clone.style.left = '50%';
-            clone.style.top = '50%';
+
+            media.style.top =
+                '50%';
 
 
+            media.style.left =
+                '0%';
 
-            clone.style.width =
+
+            media.style.width =
                 'auto';
 
-            clone.style.height =
+
+            media.style.height =
                 '100%';
 
-            clone.style.maxWidth =
+
+            media.style.maxWidth =
                 'none';
 
-            clone.style.objectFit =
+
+            media.style.objectFit =
                 'contain';
 
-            clone.style.transform =
+
+            media.style.transform =
                 `
                     translate(
-                        calc(-50% + ${x}px),
+                        calc(
+                            -50% +
+                            ${x}px
+                        ),
                         -50%
                     )
-                    scale(${scale})
+                    scale(
+                        ${scale}
+                    )
                 `;
 
 
-            clone.style.opacity =
-                distance === 0
-                    ? '0.8'
-                    : '0.45';
+            media.style.opacity =
+                Math.max(
+                    0.08,
+                    1 -
+                    (
+                        distance *
+                        0.30
+                    )
+                );
 
 
-            clone.style.filter =
+            media.style.filter =
                 'none';
 
-            clone.style.zIndex =
+
+            media.style.zIndex =
                 distance === 0
                     ? '3'
                     : '1';
 
 
-            clone.style.pointerEvents =
+            media.style.pointerEvents =
                 'none';
 
 
             neighbor.media.appendChild(
-                clone
+                media
             );
 
 
-            if (!isVideo) {
+            if (
+                media.tagName !==
+                'VIDEO'
+            ) {
 
                 return;
 
             }
 
 
-            /* SOLO EL VIDEO CENTRAL SE MUEVE */
+            media.muted =
+                true;
 
-            if (index === 0) {
 
-                const startPreview =
+            media.loop =
+                true;
+
+
+            media.playsInline =
+                true;
+
+
+            media.autoplay =
+                true;
+
+
+            media.setAttribute(
+                'autoplay',
+                ''
+            );
+
+
+            media.preload =
+                'auto';
+
+
+            if (
+                media.readyState >=
+                HTMLMediaElement.HAVE_CURRENT_DATA
+            ) {
+
+                media.play()
+                    .catch(
+                        () => {}
+                    );
+
+            } else {
+
+                media.addEventListener(
+                    'loadeddata',
                     () => {
 
-                        clone
-                            .play()
+                        media.play()
                             .catch(
                                 () => {}
                             );
 
-                    };
-
-
-                if (
-                    clone.readyState >=
-                    HTMLMediaElement
-                        .HAVE_CURRENT_DATA
-                ) {
-
-                    startPreview();
-
-                } else {
-
-                    clone.addEventListener(
-                        'loadeddata',
-                        startPreview,
-                        {
-                            once:
-                                true
-                        }
-                    );
-
-                }
-
-
-                clone.load();
-
-                startPreview();
-
-                return;
+                    },
+                    {
+                        once:
+                            true
+                    }
+                );
 
             }
-
-
-            /* LOS VIDEOS LATERALES SOLO CARGAN METADATA */
-
-            clone.preload =
-                'metadata';
-
-            clone.pause();
-
-            clone.load();
 
         }
     );
@@ -1115,14 +1464,13 @@ function setMobileNeighbor(
 }
 
 
-/* ACTUALIZAR VECINOS */
-
 function updateMobileNeighbors(
     position
 ) {
 
     if (
-        window.innerWidth > 768 ||
+        window.innerWidth >
+            768 ||
         !mobileNeighborLayer ||
         !mediaGroups.length
     ) {
@@ -1159,42 +1507,8 @@ function updateMobileNeighbors(
         totalProjects;
 
 
-    const previousPreviousProject =
-        (
-            previousProject -
-            1 +
-            totalProjects
-        ) %
-        totalProjects;
-
-
-    const nextNextProject =
-        (
-            nextProject +
-            1
-        ) %
-        totalProjects;
-
-
-    /* LOS DOS VECINOS YA SE PREPARAN */
-
-    primeMobilePreviewProject(
-        previousProject
-    );
-
-    primeMobilePreviewProject(
-        nextProject
-    );
-
-
-    /* Y TAMBIEN SUS SIGUIENTES VIDEOS */
-
-    primeMobileProjectAhead(
-        previousPreviousProject
-    );
-
-    primeMobileProjectAhead(
-        nextNextProject
+    prepareMobilePreviewRing(
+        position
     );
 
 
@@ -1202,6 +1516,7 @@ function updateMobileNeighbors(
         mobilePreviousNeighbor,
         previousProject
     );
+
 
     setMobileNeighbor(
         mobileNextNeighbor,
@@ -1211,12 +1526,13 @@ function updateMobileNeighbors(
 }
 
 
-/* CREAR CAPA DE VECINOS */
-
 function createMobileNeighbors() {
 
     mobileNeighborLayer =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
+
 
     mobileNeighborLayer.className =
         'mobile-neighbor-layer';
@@ -1249,21 +1565,30 @@ createMobileNeighbors();
 /* INTRO */
 
 const intro =
-    document.querySelector('.intro');
+    document.querySelector(
+        '.intro'
+    );
+
 
 const introTitle =
     intro
-        ? intro.querySelector('h1')
+        ? intro.querySelector(
+            'h1'
+        )
         : null;
+
 
 const introDescription =
     intro
-        ? intro.querySelector('p')
+        ? intro.querySelector(
+            'p'
+        )
         : null;
 
 
 const desktopIntroTitle =
     'Carlos Vaquer';
+
 
 const desktopIntroDescription =
     'Web developer and designer focused on custom digital experiences.';
@@ -1271,6 +1596,7 @@ const desktopIntroDescription =
 
 const mobileIntroTitle =
     'Carlos Vaquer';
+
 
 const mobileIntroDescription =
     'Websites & Design';
@@ -1289,13 +1615,15 @@ function updateMobileIntro() {
 
 
     const isMobile =
-        window.innerWidth <= 768;
+        window.innerWidth <=
+        768;
 
 
     if (isMobile) {
 
         introTitle.textContent =
             mobileIntroTitle;
+
 
         introDescription.textContent =
             mobileIntroDescription;
@@ -1305,6 +1633,7 @@ function updateMobileIntro() {
         introTitle.textContent =
             desktopIntroTitle;
 
+
         introDescription.textContent =
             desktopIntroDescription;
 
@@ -1313,15 +1642,228 @@ function updateMobileIntro() {
 }
 
 
-/* MEDIA CENTRAL */
+/* MAIN VIDEO CONTROL */
+
+let activeMainVideoProject =
+    -1;
+
+let activeMainVideoIndex =
+    -1;
+
+
+function prepareMainVideos() {
+
+    videosByProject.forEach(
+        videos => {
+
+            videos.forEach(
+                video => {
+
+                    video.muted =
+                        true;
+
+
+                    video.loop =
+                        true;
+
+
+                    video.playsInline =
+                        true;
+
+
+                    video.removeAttribute(
+                        'autoplay'
+                    );
+
+
+                    video.autoplay =
+                        false;
+
+
+                    video.preload =
+                        'metadata';
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+function pauseAllMainVideos() {
+
+    videosByProject.forEach(
+        videos => {
+
+            videos.forEach(
+                video => {
+
+                    video.pause();
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+function playMainVideo(
+    video
+) {
+
+    if (!video) {
+        return;
+    }
+
+
+    video.muted =
+        true;
+
+
+    video.loop =
+        true;
+
+
+    video.playsInline =
+        true;
+
+
+    video.preload =
+        'auto';
+
+
+    if (
+        video.readyState ===
+        HTMLMediaElement.NETWORK_EMPTY
+    ) {
+
+        video.load();
+
+    }
+
+
+    video.play()
+        .catch(
+            () => {}
+        );
+
+}
+
+
+function syncMainVideos(
+    projectIndex,
+    mediaIndex
+) {
+
+    const isMobile =
+        window.innerWidth <=
+        768;
+
+
+    if (
+        isMobile
+    ) {
+
+        if (
+            activeMainVideoProject ===
+                projectIndex &&
+            activeMainVideoIndex ===
+                mediaIndex
+        ) {
+
+            return;
+
+        }
+
+    } else {
+
+        if (
+            activeMainVideoProject ===
+                projectIndex
+        ) {
+
+            return;
+
+        }
+
+    }
+
+
+    activeMainVideoProject =
+        projectIndex;
+
+
+    activeMainVideoIndex =
+        mediaIndex;
+
+
+    pauseAllMainVideos();
+
+
+    if (isMobile) {
+
+        const media =
+            mediaByProject[
+                projectIndex
+            ]?.[
+                mediaIndex
+            ];
+
+
+        if (
+            media &&
+            media.tagName ===
+                'VIDEO'
+        ) {
+
+            playMainVideo(
+                media
+            );
+
+        }
+
+
+        return;
+
+    }
+
+
+    const videos =
+        videosByProject[
+            projectIndex
+        ] || [];
+
+
+    videos.forEach(
+        video => {
+
+            playMainVideo(
+                video
+            );
+
+        }
+    );
+
+}
+
+
+/* CENTER MEDIA */
 
 function positionCenterMedia(
     projectPosition,
     mediaPosition
 ) {
 
-    if (!mediaGroups.length) {
+    if (
+        !mediaGroups.length
+    ) {
+
         return;
+
     }
 
 
@@ -1385,22 +1927,8 @@ function positionCenterMedia(
 
 
     const isMobile =
-        window.innerWidth <= 768;
-
-
-    const centeredMediaIndex =
-        getCenteredMediaIndex(
-            isMobile
-                ? targetMediaPosition
-                : mediaPosition,
-            totalMedia
-        );
-
-
-    syncMainVideos(
-        activeProject,
-        centeredMediaIndex
-    );
+        window.innerWidth <=
+        768;
 
 
     const mobileSpacing =
@@ -1415,6 +1943,27 @@ function positionCenterMedia(
         Math.round(
             targetMediaPosition
         );
+
+
+    const currentMediaIndex =
+        (
+            (
+                Math.round(
+                    isMobile
+                        ? targetMediaPosition
+                        : mediaPosition
+                ) %
+                totalMedia
+            ) +
+            totalMedia
+        ) %
+        totalMedia;
+
+
+    syncMainVideos(
+        activeProject,
+        currentMediaIndex
+    );
 
 
     mediaItems.forEach(
@@ -1576,7 +2125,7 @@ function positionCenterMedia(
 }
 
 
-/* RUEDAS */
+/* WHEELS */
 
 function positionWheels(
     projectPosition,
@@ -1584,7 +2133,8 @@ function positionWheels(
 ) {
 
     const isMobile =
-        window.innerWidth <= 768;
+        window.innerWidth <=
+        768;
 
 
     positionCenterMedia(
@@ -1599,7 +2149,8 @@ function positionWheels(
 
 
     const centerY =
-        leftWheel.offsetHeight / 2;
+        leftWheel.offsetHeight /
+        2;
 
 
     const viewportWidth =
@@ -1607,7 +2158,8 @@ function positionWheels(
 
 
     const halfWidth =
-        viewportWidth / 2;
+        viewportWidth /
+        2;
 
 
     const totalProjects =
@@ -1760,7 +2312,7 @@ function positionWheels(
 }
 
 
-/* CAMBIO DE PROYECTO */
+/* ACTIVE PROJECT */
 
 let previousActiveProject =
     getActiveProject(
@@ -1784,6 +2336,7 @@ function checkActiveProject() {
         currentMediaPosition =
             0;
 
+
         targetMediaPosition =
             0;
 
@@ -1800,6 +2353,14 @@ function checkActiveProject() {
         updateMobileNeighbors(
             activeProject
         );
+
+
+        activeMainVideoProject =
+            -1;
+
+
+        activeMainVideoIndex =
+            -1;
 
 
         syncMainVideos(
@@ -1821,6 +2382,12 @@ function snapProject() {
             targetPosition
         );
 
+
+    prepareMobilePreviewRing(
+        targetPosition
+    );
+
+
     startRender();
 
 }
@@ -1833,12 +2400,13 @@ function snapMedia() {
             targetMediaPosition
         );
 
+
     startRender();
 
 }
 
 
-/* WHEEL DE PROYECTOS */
+/* PROJECT WHEEL */
 
 function handleProjectWheel(
     event
@@ -1852,16 +2420,19 @@ function handleProjectWheel(
 
 
     if (
-        event.deltaMode === 1
+        event.deltaMode ===
+        1
     ) {
 
-        delta *= 16;
+        delta *=
+            16;
 
     }
 
 
     if (
-        event.deltaMode === 2
+        event.deltaMode ===
+        2
     ) {
 
         delta *=
@@ -1905,6 +2476,11 @@ function handleProjectWheel(
     }
 
 
+    prepareMobilePreviewRing(
+        targetPosition
+    );
+
+
     startRender();
 
 
@@ -1926,7 +2502,7 @@ function handleProjectWheel(
 }
 
 
-/* WHEEL DE MEDIA */
+/* MEDIA WHEEL */
 
 function handleMediaWheel(
     event
@@ -1965,16 +2541,19 @@ function handleMediaWheel(
 
 
     if (
-        event.deltaMode === 1
+        event.deltaMode ===
+        1
     ) {
 
-        delta *= 16;
+        delta *=
+            16;
 
     }
 
 
     if (
-        event.deltaMode === 2
+        event.deltaMode ===
+        2
     ) {
 
         delta *=
@@ -2094,16 +2673,16 @@ function render() {
 }
 
 
-/* ARRANCAR RENDER */
+/* START RENDER */
 
 function startRender() {
 
     if (
-        animationFrame !== null
+        animationFrame !==
+        null
     ) {
 
         return;
-
     }
 
 
@@ -2115,13 +2694,14 @@ function startRender() {
 }
 
 
-/* EVENTOS */
+/* EVENTS */
 
 leftWheel.addEventListener(
     'wheel',
     handleProjectWheel,
     {
-        passive: false
+        passive:
+            false
     }
 );
 
@@ -2130,7 +2710,8 @@ rightWheel.addEventListener(
     'wheel',
     handleProjectWheel,
     {
-        passive: false
+        passive:
+            false
     }
 );
 
@@ -2139,7 +2720,8 @@ mediaArea.addEventListener(
     'wheel',
     handleMediaWheel,
     {
-        passive: false
+        passive:
+            false
     }
 );
 
@@ -2173,6 +2755,7 @@ index.addEventListener(
 
                     indexMenu.style.height =
                         '0px';
+
 
                     indexMenu.style.opacity =
                         '0';
@@ -2223,6 +2806,7 @@ index.addEventListener(
         indexMenu.style.height =
             '0px';
 
+
         indexMenu.style.opacity =
             '0';
 
@@ -2232,6 +2816,7 @@ index.addEventListener(
 
                 indexMenu.style.height =
                     `${indexMenu.scrollHeight}px`;
+
 
                 indexMenu.style.opacity =
                     '1';
@@ -2301,6 +2886,7 @@ about.addEventListener(
                     aboutMenu.style.height =
                         '0px';
 
+
                     aboutMenu.style.opacity =
                         '0';
 
@@ -2350,6 +2936,7 @@ about.addEventListener(
         aboutMenu.style.height =
             '0px';
 
+
         aboutMenu.style.opacity =
             '0';
 
@@ -2359,6 +2946,7 @@ about.addEventListener(
 
                 aboutMenu.style.height =
                     `${aboutMenu.scrollHeight}px`;
+
 
                 aboutMenu.style.opacity =
                     '1';
@@ -2461,7 +3049,8 @@ mainElement.addEventListener(
 
     },
     {
-        passive: true
+        passive:
+            true
     }
 );
 
@@ -2538,7 +3127,7 @@ mainElement.addEventListener(
         }
 
 
-        /* SWIPE HORIZONTAL = MEDIA */
+        /* HORIZONTAL MEDIA */
 
         if (
             distanceX >
@@ -2555,7 +3144,8 @@ mainElement.addEventListener(
 
 
             if (
-                deltaX < 0
+                deltaX <
+                0
             ) {
 
                 targetMediaPosition +=
@@ -2587,15 +3177,17 @@ mainElement.addEventListener(
 
             startRender();
 
+
             return;
 
         }
 
 
-        /* SWIPE VERTICAL = PROYECTO */
+        /* VERTICAL PROJECT */
 
         if (
-            deltaY < 0
+            deltaY <
+            0
         ) {
 
             targetPosition +=
@@ -2607,6 +3199,11 @@ mainElement.addEventListener(
                 1;
 
         }
+
+
+        prepareMobilePreviewRing(
+            targetPosition
+        );
 
 
         clearTimeout(
@@ -2629,12 +3226,13 @@ mainElement.addEventListener(
 
     },
     {
-        passive: true
+        passive:
+            true
     }
 );
 
 
-/* MAPEO DEL INDEX */
+/* INDEX MAPPING */
 
 const indexToScreenProject = {
 
@@ -2731,6 +3329,12 @@ indexRows.forEach(
                 }
 
 
+                prepareMobilePreviewRing(
+                    targetPosition +
+                    difference
+                );
+
+
                 const startPosition =
                     currentPosition;
 
@@ -2767,12 +3371,10 @@ indexRows.forEach(
 
                     const eased =
                         progress < 0.5
-
                             ? 4 *
                               progress *
                               progress *
                               progress
-
                             : 1 -
                               Math.pow(
                                   -2 *
@@ -2800,11 +3402,23 @@ indexRows.forEach(
                         0;
 
 
+                    if (
+                        progress < 1
+                    ) {
+
+                        prepareMobilePreviewRing(
+                            targetPosition
+                        );
+
+                    }
+
+
                     startRender();
 
 
                     if (
-                        progress < 1
+                        progress <
+                        1
                     ) {
 
                         requestAnimationFrame(
@@ -2832,9 +3446,10 @@ indexRows.forEach(
 );
 
 
-/* INICIO */
+/* INIT */
 
 prepareMainVideos();
+
 
 updateMobileIntro();
 
@@ -2857,6 +3472,16 @@ positionWheels(
 );
 
 
+setTimeout(
+    () => {
+
+        warmRemainingMobileProjects();
+
+    },
+    500
+);
+
+
 /* RESIZE */
 
 window.addEventListener(
@@ -2866,43 +3491,54 @@ window.addEventListener(
         updateMobileIntro();
 
 
-        previousVideoProject =
-            -1;
+        if (
+            window.innerWidth <=
+            768
+        ) {
+
+            mobilePreviousNeighbor.project =
+                null;
 
 
-        previousVideoMedia =
-            -1;
+            mobileNextNeighbor.project =
+                null;
 
 
-        prepareMainVideos();
+            mobilePreviewCache.forEach(
+                cached => {
 
+                    cached.media.forEach(
+                        media => {
 
-        const resizedProject =
-            getActiveProject(
-                targetPosition
+                            if (
+                                media.tagName ===
+                                'VIDEO'
+                            ) {
+
+                                media.pause();
+
+                            }
+
+                        }
+                    );
+
+                }
             );
 
 
-        const resizedMediaCount =
-            (
-                mediaByProject[
-                    resizedProject
-                ] || []
-            ).length;
+            updateMobileNeighbors(
+                targetPosition
+            );
+
+        }
 
 
-        syncMainVideos(
-            resizedProject,
-            getCenteredMediaIndex(
-                targetMediaPosition,
-                resizedMediaCount
-            )
-        );
+        activeMainVideoProject =
+            -1;
 
 
-        updateMobileNeighbors(
-            targetPosition
-        );
+        activeMainVideoIndex =
+            -1;
 
 
         positionWheels(
