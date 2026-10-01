@@ -1,141 +1,275 @@
-const mainElement =
-    document.querySelector('main');
-
+const mainElement = document.querySelector('main');
 
 const leftWheel =
     document.querySelector('.project-wheel-left');
 
-
 const rightWheel =
     document.querySelector('.project-wheel-right');
-
 
 const leftItems =
     leftWheel.querySelectorAll('.wheel-item');
 
-
 const rightItems =
     rightWheel.querySelectorAll('.wheel-item');
-
 
 const mediaGroups =
     document.querySelectorAll('.project-image-group');
 
-
 const projectsArea =
     document.querySelector('.projects');
-
 
 const mediaArea =
     document.querySelector('.project-images');
 
-
 const index =
     document.querySelector('.index');
-
 
 const indexMenu =
     document.querySelector('.index-menu');
 
-
 const about =
     document.querySelector('.about');
-
 
 const aboutMenu =
     document.querySelector('.about-menu');
 
+const intro =
+    document.querySelector('.intro');
+
+const introTitle =
+    intro
+        ? intro.querySelector('h1')
+        : null;
+
+const introDescription =
+    intro
+        ? intro.querySelector('p')
+        : null;
+
 
 const radius = 300;
 
-
 const angleStep = 25;
-
 
 const scrollSensitivity = 0.01;
 
-
 const smoothness = 0.14;
-
 
 const snapDelay = 120;
 
 
 const mediaSpacing = 350;
 
-
 const mediaScale = 0.82;
-
 
 const mediaBlur = 5;
 
-
 const mediaScrollSensitivity = 0.005;
 
-
 const mediaSmoothness = 0.14;
-
 
 const mediaSnapDelay = 120;
 
 
-let currentPosition = 0;
+const mobileBreakpoint = 768;
 
+const mobileMediaSpacing = 0.68;
+
+const mobileMediaMaxSpacing = 280;
+
+
+let currentPosition = 0;
 
 let targetPosition = 0;
 
-
 let currentMediaPosition = 0;
-
 
 let targetMediaPosition = 0;
 
-
 let animationFrame = null;
-
 
 let projectSnapTimeout = null;
 
-
 let mediaSnapTimeout = null;
 
+let previousActiveProject = -1;
 
-function getActiveProject(position) {
+let activeProject = 0;
+
+let activeMediaItems = [];
+
+
+const mediaByProject =
+    Array.from(
+        mediaGroups,
+        group =>
+            Array.from(
+                group.querySelectorAll(
+                    'img, video'
+                )
+            )
+    );
+
+
+const videosByProject =
+    mediaByProject.map(
+        items =>
+            items.filter(
+                media =>
+                    media.tagName ===
+                    'VIDEO'
+            )
+    );
+
+
+const allVideos =
+    videosByProject.flat();
+
+
+const mobileProjectData = {
+
+    0: {
+        title: 'Javier Camps',
+        category: 'Visual Identity',
+        year: '2025',
+        url: 'https://javiercamps.com'
+    },
+
+    1: {
+        title: 'Aina Monzó',
+        category: 'Online Jewellery Shop',
+        year: '2026',
+        url: 'https://ainamonzo.com'
+    },
+
+    2: {
+        title: '3D Modeling',
+        category: 'Design + 3D Animation',
+        year: '2022',
+        url: 'https://www.instagram.com/vaqkr.3d'
+    },
+
+    3: {
+        title: 'Artántida',
+        category: 'Event Platform',
+        year: '2026',
+        url: 'https://artantida.com'
+    },
+
+    4: {
+        title: 'Gorka Larcan',
+        category: 'Visual Identity',
+        year: '2026',
+        wip: true,
+        url: 'https://gorkalarcan.com'
+    },
+
+    5: {
+        title: 'Rubén Segovia',
+        category: 'Visual Identity',
+        year: '2025',
+        url: 'https://rubensegovia.com/'
+    },
+
+    6: {
+        title: 'Luzia Orts',
+        category: 'Photography Portfolio',
+        year: '2025',
+        url: 'https://luziaorts.com'
+    }
+
+};
+
+
+let mobileProjectInfo = null;
+
+let mobileNeighborLayer = null;
+
+let mobilePreviousNeighbor = null;
+
+let mobileNextNeighbor = null;
+
+
+function isMobile() {
+
+    return window.innerWidth <=
+        mobileBreakpoint;
+
+}
+
+
+function getActiveProject(
+    position
+) {
 
     const totalProjects =
         mediaGroups.length;
 
     if (!totalProjects) {
-
         return 0;
-
     }
 
-    let index =
+    let indexValue =
         Math.round(position);
 
-    index =
+    indexValue =
         (
             (
-                index %
+                indexValue %
                 totalProjects
             ) +
             totalProjects
         ) %
         totalProjects;
 
-    return index;
+    return indexValue;
+
+}
+
+
+function normalizeProjectIndex(
+    indexValue
+) {
+
+    const totalProjects =
+        mediaGroups.length;
+
+    if (!totalProjects) {
+        return 0;
+    }
+
+    return (
+        (
+            indexValue %
+            totalProjects
+        ) +
+        totalProjects
+    ) %
+    totalProjects;
+
+}
+
+
+function getProjectData(
+    projectIndex
+) {
+
+    return mobileProjectData[
+        projectIndex
+    ] || null;
+
 }
 
 
 function getRelativeIndex(
-    index,
+    indexValue,
     position,
     totalItems
 ) {
 
     let relativeIndex =
-        index - position;
+        indexValue -
+        position;
 
     while (
         relativeIndex >
@@ -158,13 +292,18 @@ function getRelativeIndex(
     }
 
     return relativeIndex;
+
 }
 
 
-function getOpacity(distance) {
+function getOpacity(
+    distance
+) {
 
     const absDistance =
-        Math.abs(distance);
+        Math.abs(
+            distance
+        );
 
     if (
         absDistance <= 1
@@ -185,7 +324,8 @@ function getOpacity(distance) {
         return 0.25 -
             (
                 (
-                    absDistance - 1
+                    absDistance -
+                    1
                 ) *
                 0.10
             );
@@ -199,7 +339,8 @@ function getOpacity(distance) {
         return 0.15 -
             (
                 (
-                    absDistance - 2
+                    absDistance -
+                    2
                 ) *
                 0.10
             );
@@ -207,177 +348,370 @@ function getOpacity(distance) {
     }
 
     return 0.05;
+
 }
 
 
-const mobileProjectData = {
+function prepareVideos() {
 
-    0: {
+    allVideos.forEach(
+        video => {
 
-        title: 'Javier Camps',
+            video.autoplay =
+                false;
 
-        category: 'Visual Identity',
+            video.removeAttribute(
+                'autoplay'
+            );
 
-        year: '2025',
+            video.muted =
+                true;
 
-        url: 'https://javiercamps.com'
+            video.loop =
+                true;
 
-    },
+            video.playsInline =
+                true;
 
-    1: {
+            video.preload =
+                'none';
 
-        title: 'Aina Monzó',
+            video.pause();
 
-        category: 'Online Jewellery Shop',
+        }
+    );
 
-        year: '2026',
+}
 
-        url: 'https://ainamonzo.com'
 
-    },
+function pauseAllVideos() {
 
-    2: {
+    allVideos.forEach(
+        video => {
 
-        title: '3D Modeling',
+            video.pause();
 
-        category: 'Design + 3D Animation',
+        }
+    );
 
-        year: '2022',
+}
 
-        url: 'https://www.instagram.com/vaqkr.3d'
 
-    },
+function preloadProject(
+    projectIndex
+) {
 
-    3: {
+    const items =
+        mediaByProject[
+            projectIndex
+        ] || [];
 
-        title: 'Artántida',
+    const firstVideo =
+        items.find(
+            media =>
+                media.tagName ===
+                'VIDEO'
+        );
 
-        category: 'Event Platform',
+    if (!firstVideo) {
+        return;
+    }
 
-        year: '2026',
+    firstVideo.preload =
+        'auto';
 
-        url: 'https://artantida.com'
+}
 
-    },
 
-    4: {
+function playVideo(
+    video
+) {
 
-        title: 'Gorka Larcan',
+    if (!video) {
+        return;
+    }
 
-        category: 'Visual Identity',
+    video.preload =
+        'auto';
 
-        year: '2026',
+    video.play().catch(
+        () => {}
+    );
 
-        wip: true,
+}
 
-        url: 'https://gorkalarcan.com'
 
-    },
+function syncVideos() {
 
-    5: {
+    pauseAllVideos();
 
-        title: 'Rubén Segovia',
+    const activeVideos =
+        videosByProject[
+            activeProject
+        ] || [];
 
-        category: 'Visual Identity',
+    if (!activeVideos.length) {
+        return;
+    }
 
-        year: '2025',
+    if (isMobile()) {
 
-        url: 'https://rubensegovia.com/'
+        const totalMedia =
+            activeMediaItems.length;
 
-    },
+        if (!totalMedia) {
+            return;
+        }
 
-    6: {
+        let mediaIndex =
+            Math.round(
+                targetMediaPosition
+            );
 
-        title: 'Luzia Orts',
+        mediaIndex =
+            (
+                (
+                    mediaIndex %
+                    totalMedia
+                ) +
+                totalMedia
+            ) %
+            totalMedia;
 
-        category: 'Photography Portfolio',
+        const activeMedia =
+            activeMediaItems[
+                mediaIndex
+            ];
 
-        year: '2025',
+        if (
+            activeMedia &&
+            activeMedia.tagName ===
+            'VIDEO'
+        ) {
 
-        url: 'https://luziaorts.com'
+            playVideo(
+                activeMedia
+            );
+
+        }
+
+        return;
 
     }
 
-};
+    activeVideos.forEach(
+        video => {
+
+            playVideo(
+                video
+            );
+
+        }
+    );
+
+}
 
 
-let mobileProjectInfo =
-    null;
+function activateProject(
+    projectIndex
+) {
+
+    activeProject =
+        normalizeProjectIndex(
+            projectIndex
+        );
+
+    previousActiveProject =
+        activeProject;
+
+    currentMediaPosition =
+        0;
+
+    targetMediaPosition =
+        0;
+
+    activeMediaItems =
+        mediaByProject[
+            activeProject
+        ] || [];
+
+    mediaGroups.forEach(
+        (
+            group,
+            indexValue
+        ) => {
+
+            group.classList.toggle(
+                'active',
+                indexValue ===
+                activeProject
+            );
+
+        }
+    );
+
+    updateMobileProjectInfo(
+        activeProject
+    );
+
+    updateMobileNeighbors(
+        activeProject
+    );
+
+    preloadProject(
+        activeProject
+    );
+
+    preloadProject(
+        normalizeProjectIndex(
+            activeProject + 1
+        )
+    );
+
+    preloadProject(
+        normalizeProjectIndex(
+            activeProject - 1
+        )
+    );
+
+    syncVideos();
+
+}
 
 
-let mobileNeighborLayer =
-    null;
+function checkActiveProject() {
+
+    const nextProject =
+        getActiveProject(
+            currentPosition
+        );
+
+    if (
+        nextProject ===
+        previousActiveProject
+    ) {
+
+        return;
+    }
+
+    activateProject(
+        nextProject
+    );
+
+}
 
 
-let mobilePreviousNeighbor =
-    null;
+function updateMobileIntro() {
 
+    if (
+        !introTitle ||
+        !introDescription
+    ) {
 
-let mobileNextNeighbor =
-    null;
+        return;
+
+    }
+
+    introTitle.textContent =
+        'Carlos Vaquer';
+
+    introDescription.textContent =
+        isMobile()
+            ? 'Websites & Design'
+            : 'Web developer and designer focused on custom digital experiences.';
+
+}
 
 
 function createMobileProjectInfo() {
 
+    if (
+        !mainElement
+    ) {
+
+        return null;
+
+    }
+
+    if (
+        mobileProjectInfo
+    ) {
+
+        return mobileProjectInfo;
+
+    }
+
     mobileProjectInfo =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
 
     mobileProjectInfo.className =
         'mobile-project-info';
 
-
     const copy =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
 
     copy.className =
         'mobile-project-copy';
 
-
     const title =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
 
     title.className =
         'mobile-project-title';
 
-
     const category =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
 
     category.className =
         'mobile-project-category';
 
-
     const year =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
 
     year.className =
         'mobile-project-year';
 
-
     const wip =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
 
     wip.className =
         'mobile-project-wip';
 
+    copy.appendChild(
+        title
+    );
 
-    copy.appendChild(title);
+    copy.appendChild(
+        category
+    );
 
-    copy.appendChild(category);
+    copy.appendChild(
+        year
+    );
 
-    copy.appendChild(year);
-
-    copy.appendChild(wip);
-
+    copy.appendChild(
+        wip
+    );
 
     const link =
-        document.createElement('a');
+        document.createElement(
+            'a'
+        );
 
     link.className =
         'mobile-project-link project-link';
-
-    link.textContent =
-        'View Site';
 
     link.target =
         '_blank';
@@ -385,6 +719,8 @@ function createMobileProjectInfo() {
     link.rel =
         'noopener noreferrer';
 
+    link.textContent =
+        'View Site';
 
     mobileProjectInfo.appendChild(
         copy
@@ -394,10 +730,12 @@ function createMobileProjectInfo() {
         link
     );
 
-
     mainElement.appendChild(
         mobileProjectInfo
     );
+
+    return mobileProjectInfo;
+
 }
 
 
@@ -405,263 +743,362 @@ function updateMobileProjectInfo(
     projectIndex
 ) {
 
+    const info =
+        createMobileProjectInfo();
+
+    const project =
+        getProjectData(
+            projectIndex
+        );
+
     if (
-        !mobileProjectInfo
+        !info ||
+        !project
     ) {
 
         return;
 
     }
 
-
-    const project =
-        mobileProjectData[
-            projectIndex
-        ];
-
-
-    if (!project) {
-
-        return;
-
-    }
-
-
     const title =
-        mobileProjectInfo.querySelector(
+        info.querySelector(
             '.mobile-project-title'
         );
 
-
     const category =
-        mobileProjectInfo.querySelector(
+        info.querySelector(
             '.mobile-project-category'
         );
 
-
     const year =
-        mobileProjectInfo.querySelector(
+        info.querySelector(
             '.mobile-project-year'
         );
 
-
     const wip =
-        mobileProjectInfo.querySelector(
+        info.querySelector(
             '.mobile-project-wip'
         );
 
-
     const link =
-        mobileProjectInfo.querySelector(
+        info.querySelector(
             '.mobile-project-link'
         );
-
 
     title.textContent =
         project.title;
 
-
     category.textContent =
         project.category;
 
-
     year.textContent =
         project.year;
-
 
     wip.textContent =
         project.wip
             ? 'WIP'
             : '';
 
+    wip.style.display =
+        project.wip
+            ? 'inline'
+            : 'none';
 
-    link.href =
-        project.url ||
-        '#';
+    if (
+        project.url
+    ) {
+
+        link.href =
+            project.url;
+
+        link.style.display =
+            'inline-flex';
+
+    } else {
+
+        link.removeAttribute(
+            'href'
+        );
+
+        link.style.display =
+            'none';
+
+    }
+
 }
 
 
 function createMobileNeighbor(
-    position
+    type
 ) {
 
-    const neighbor =
-        document.createElement('div');
+    const card =
+        document.createElement(
+            'div'
+        );
 
-    neighbor.className =
-        `mobile-neighbor mobile-neighbor-${position}`;
+    card.className =
+        `mobile-neighbor mobile-neighbor-${type}`;
 
+    card.style.position =
+        'absolute';
+
+    card.style.left =
+        '50%';
+
+    card.style.width =
+        '100vw';
+
+    card.style.transform =
+        'translateX(-50%)';
+
+    card.style.display =
+        'flex';
+
+    card.style.flexDirection =
+        'column';
+
+    card.style.alignItems =
+        'center';
+
+    card.style.gap =
+        '0.4rem';
+
+    card.style.opacity =
+        '0.42';
+
+    card.style.filter =
+        'blur(8px)';
+
+    card.style.pointerEvents =
+        'none';
 
     const media =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
 
     media.className =
         'mobile-neighbor-media';
 
+    media.style.position =
+        'relative';
+
+    media.style.width =
+        '100vw';
+
+    media.style.height =
+        'min(15dvh, 105px)';
+
+    media.style.display =
+        'block';
+
+    media.style.overflow =
+        'visible';
+
 
     const title =
-        document.createElement('span');
+        document.createElement(
+            'span'
+        );
 
     title.className =
         'mobile-neighbor-title';
 
+    title.style.display =
+        'block';
 
-    neighbor.appendChild(
+    title.style.width =
+        '100%';
+
+    title.style.textAlign =
+        'center';
+
+
+    card.appendChild(
         media
     );
 
-    neighbor.appendChild(
+    card.appendChild(
         title
     );
 
 
-    mobileNeighborLayer.appendChild(
-        neighbor
-    );
+    return card;
 
-
-    return {
-
-        element: neighbor,
-
-        media,
-
-        title,
-
-        project: null
-
-    };
 }
 
 
 function setMobileNeighbor(
-    neighbor,
+    card,
     projectIndex
 ) {
 
     if (
-        !neighbor ||
-        neighbor.project ===
-        projectIndex
+        !card
     ) {
+
         return;
+
     }
 
 
-    const projectGroup =
-        mediaGroups[
-            projectIndex
-        ];
+    if (
+        card.dataset.project ===
+        String(projectIndex)
+    ) {
 
-
-    if (!projectGroup) {
         return;
+
     }
-
-
-    const sourceMedia =
-        projectGroup.querySelectorAll(
-            'img, video'
-        );
 
 
     const project =
-        mobileProjectData[
+        getProjectData(
             projectIndex
-        ];
+        );
+
+    const sourceMedia =
+        mediaByProject[
+            projectIndex
+        ] || [];
 
 
-    neighbor.media.innerHTML =
-        '';
+    const mediaContainer =
+        card.querySelector(
+            '.mobile-neighbor-media'
+        );
+
+    const title =
+        card.querySelector(
+            '.mobile-neighbor-title'
+        );
 
 
-    neighbor.project =
-        projectIndex;
+    if (
+        !project ||
+        !mediaContainer ||
+        !title
+    ) {
+
+        return;
+
+    }
 
 
-    neighbor.title.textContent =
-        project
-            ? project.title
-            : '';
+    card.dataset.project =
+        String(projectIndex);
+
+
+    title.textContent =
+        project.title;
+
+
+    mediaContainer.replaceChildren();
+
+
+    const mediaToShow =
+        sourceMedia.slice(
+            0,
+            3
+        );
 
 
     const mobileSpacing =
         Math.min(
-            280,
-            window.innerWidth * 0.72
+            190,
+            window.innerWidth *
+            0.50
         );
 
 
-    sourceMedia.forEach(
+    mediaToShow.forEach(
         (
             source,
-            index
+            indexValue
         ) => {
 
-            const clone =
-                source.cloneNode(true);
+            const preview =
+                source.cloneNode(
+                    true
+                );
 
 
-            clone.classList.add(
+            preview.classList.add(
                 'mobile-neighbor-preview'
             );
 
 
-            clone.removeAttribute(
+            preview.removeAttribute(
                 'id'
             );
 
 
+            preview.setAttribute(
+                'aria-hidden',
+                'true'
+            );
+
+
             if (
-                clone.tagName ===
+                preview.tagName ===
                 'VIDEO'
             ) {
 
-                clone.muted =
-                    true;
+                preview.autoplay =
+                    false;
 
-                clone.autoplay =
-                    true;
-
-                clone.loop =
-                    true;
-
-                clone.playsInline =
-                    true;
-
-                clone.setAttribute(
-                    'muted',
-                    ''
+                preview.removeAttribute(
+                    'autoplay'
                 );
 
-                clone.setAttribute(
-                    'autoplay',
-                    ''
+                preview.muted =
+                    true;
+
+                preview.loop =
+                    true;
+
+                preview.playsInline =
+                    true;
+
+                preview.preload =
+                    'metadata';
+
+                preview.removeAttribute(
+                    'controls'
                 );
 
-                clone.setAttribute(
-                    'loop',
-                    ''
+
+                preview.addEventListener(
+                    'loadeddata',
+                    () => {
+
+                        preview.currentTime =
+                            0;
+
+                        preview.pause();
+
+                    },
+                    {
+                        once: true
+                    }
                 );
 
-                clone.setAttribute(
-                    'playsinline',
-                    ''
-                );
+                preview.load();
 
             }
 
 
             const relativeIndex =
-                index === 0
+                indexValue === 0
+
                     ? 0
-                    : index % 2 === 1
-                        ? Math.ceil(
-                            index / 2
-                        )
-                        : -Math.floor(
-                            index / 2
-                        );
+
+                    : indexValue === 1
+
+                        ? 1
+
+                        : -1;
 
 
             const x =
@@ -669,54 +1106,48 @@ function setMobileNeighbor(
                 mobileSpacing;
 
 
-            const distance =
-                Math.abs(
-                    relativeIndex
-                );
-
-
             const scale =
-                Math.pow(
-                    mediaScale,
-                    distance
-                );
+                relativeIndex === 0
+                    ? 1
+                    : mediaScale;
 
 
-            clone.style.position =
+            preview.style.position =
                 'absolute';
 
 
-            clone.style.top =
+            preview.style.top =
                 '50%';
 
 
-            clone.style.left =
-                '0%';
+            preview.style.left =
+                '50%';
 
 
-            clone.style.width =
+            preview.style.width =
                 'auto';
 
 
-            clone.style.height =
+            preview.style.height =
                 '100%';
 
 
-            clone.style.maxWidth =
+            preview.style.maxWidth =
                 'none';
 
 
-            clone.style.objectFit =
+            preview.style.objectFit =
                 'contain';
 
 
-            clone.style.transform = `
-                translate(
+            preview.style.transform = `
+                translate3d(
                     calc(
                         -50% +
                         ${x}px
                     ),
-                    -50%
+                    -50%,
+                    0
                 )
                 scale(
                     ${scale}
@@ -724,65 +1155,28 @@ function setMobileNeighbor(
             `;
 
 
-            clone.style.opacity =
-                Math.max(
-                    0.08,
-                    1 -
-                    (
-                        distance *
-                        0.30
-                    )
-                );
-
-
-            clone.style.filter =
-                `blur(${
-                    Math.max(
-                        1,
-                        distance *
-                        mediaBlur
-                    ) +
-                    5
-                }px)`;
-
-
-            clone.style.zIndex =
-                '1';
-
-
-            clone.style.pointerEvents =
+            preview.style.pointerEvents =
                 'none';
 
 
-            neighbor.media.appendChild(
-                clone
+            mediaContainer.appendChild(
+                preview
             );
-
-
-            if (
-                clone.tagName ===
-                'VIDEO'
-            ) {
-
-                clone.play().catch(
-                    () => {}
-                );
-
-            }
 
         }
     );
+
 }
 
 
 function updateMobileNeighbors(
-    position
+    projectIndex
 ) {
 
     if (
-        window.innerWidth > 768 ||
-        !mobileNeighborLayer ||
-        !mediaGroups.length
+        !isMobile() ||
+        !mobilePreviousNeighbor ||
+        !mobileNextNeighbor
     ) {
 
         return;
@@ -794,15 +1188,9 @@ function updateMobileNeighbors(
         mediaGroups.length;
 
 
-    const activeProject =
-        getActiveProject(
-            position
-        );
-
-
     const previousProject =
         (
-            activeProject -
+            projectIndex -
             1 +
             totalProjects
         ) %
@@ -811,7 +1199,7 @@ function updateMobileNeighbors(
 
     const nextProject =
         (
-            activeProject +
+            projectIndex +
             1
         ) %
         totalProjects;
@@ -827,21 +1215,35 @@ function updateMobileNeighbors(
         mobileNextNeighbor,
         nextProject
     );
+
 }
 
 
 function createMobileNeighbors() {
 
+    if (
+        !projectsArea ||
+        mobileNeighborLayer
+    ) {
+
+        return;
+
+    }
+
+
     mobileNeighborLayer =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
 
 
     mobileNeighborLayer.className =
         'mobile-neighbor-layer';
 
 
-    projectsArea.appendChild(
-        mobileNeighborLayer
+    mobileNeighborLayer.setAttribute(
+        'aria-hidden',
+        'true'
     );
 
 
@@ -855,154 +1257,31 @@ function createMobileNeighbors() {
         createMobileNeighbor(
             'next'
         );
-}
 
 
-createMobileProjectInfo();
+    mobileNeighborLayer.appendChild(
+        mobilePreviousNeighbor
+    );
 
 
-createMobileNeighbors();
+    mobileNeighborLayer.appendChild(
+        mobileNextNeighbor
+    );
 
 
-const intro =
-    document.querySelector('.intro');
+    projectsArea.appendChild(
+        mobileNeighborLayer
+    );
 
-
-const introTitle =
-    intro
-        ? intro.querySelector('h1')
-        : null;
-
-
-const introDescription =
-    intro
-        ? intro.querySelector('p')
-        : null;
-
-
-const desktopIntroTitle =
-    'Carlos Vaquer';
-
-
-const desktopIntroDescription =
-    'Web developer and designer focused on custom digital experiences.';
-
-
-const mobileIntroTitle =
-    'Carlos Vaquer';
-
-
-const mobileIntroDescription =
-    'Websites & Design';
-
-
-function updateMobileIntro() {
-
-    if (
-        !introTitle ||
-        !introDescription
-    ) {
-
-        return;
-
-    }
-
-
-    const isMobile =
-        window.innerWidth <=
-        768;
-
-
-    if (isMobile) {
-
-        introTitle.textContent =
-            mobileIntroTitle;
-
-
-        introDescription.textContent =
-            mobileIntroDescription;
-
-    } else {
-
-        introTitle.textContent =
-            desktopIntroTitle;
-
-
-        introDescription.textContent =
-            desktopIntroDescription;
-
-    }
 }
 
 
 function positionCenterMedia(
-    projectPosition,
     mediaPosition
 ) {
 
-    if (
-        !mediaGroups.length
-    ) {
-
-        return;
-
-    }
-
-
-    const activeProject =
-        getActiveProject(
-            projectPosition
-        );
-
-
-    mediaGroups.forEach(
-        (
-            group,
-            index
-        ) => {
-
-            if (
-                index ===
-                activeProject
-            ) {
-
-                group.classList.add(
-                    'active'
-                );
-
-            } else {
-
-                group.classList.remove(
-                    'active'
-                );
-
-            }
-
-        }
-    );
-
-
-    const activeGroup =
-        mediaGroups[
-            activeProject
-        ];
-
-
-    if (!activeGroup) {
-
-        return;
-
-    }
-
-
-    const mediaItems =
-        activeGroup.querySelectorAll(
-            'img, video'
-        );
-
-
     const totalMedia =
-        mediaItems.length;
+        activeMediaItems.length;
 
 
     if (!totalMedia) {
@@ -1012,54 +1291,55 @@ function positionCenterMedia(
     }
 
 
-    const isMobile =
-        window.innerWidth <=
-        768;
+    const mobile =
+        isMobile();
 
 
-    const mobileSpacing =
-        Math.min(
-            280,
-            window.innerWidth *
-            0.72
-        );
+    const visualPosition =
+        mobile
+            ? Math.round(
+                targetMediaPosition
+            )
+            : mediaPosition;
 
 
-    const mobileVisualPosition =
-        Math.round(
-            targetMediaPosition
-        );
+    const spacing =
+        mobile
+
+            ? Math.min(
+                mobileMediaMaxSpacing,
+                window.innerWidth *
+                mobileMediaSpacing
+            )
+
+            : mediaSpacing;
 
 
-    mediaItems.forEach(
+    activeMediaItems.forEach(
         (
             media,
-            index
+            indexValue
         ) => {
 
-            const relativeIndex =
+            const physicalRelative =
                 getRelativeIndex(
-                    index,
+                    indexValue,
                     mediaPosition,
                     totalMedia
                 );
 
 
-            const visualRelativeIndex =
-                isMobile
-
-                    ? getRelativeIndex(
-                        index,
-                        mobileVisualPosition,
-                        totalMedia
-                    )
-
-                    : relativeIndex;
+            const visualRelative =
+                getRelativeIndex(
+                    indexValue,
+                    visualPosition,
+                    totalMedia
+                );
 
 
             const distance =
                 Math.abs(
-                    visualRelativeIndex
+                    visualRelative
                 );
 
 
@@ -1070,50 +1350,25 @@ function positionCenterMedia(
                 );
 
 
-            if (isMobile) {
+            if (mobile) {
 
                 const x =
-                    relativeIndex *
-                    mobileSpacing;
+                    physicalRelative *
+                    spacing;
 
 
                 const isActive =
                     distance === 0;
 
 
-                const opacity =
-                    isActive
-
-                        ? 1
-
-                        : Math.max(
-                            0.08,
-                            1 -
-                            (
-                                distance *
-                                0.30
-                            )
-                        );
-
-
-                const blur =
-                    isActive
-
-                        ? 'none'
-
-                        : `blur(${
-                            distance *
-                            mediaBlur
-                        }px)`;
-
-
                 media.style.transform = `
-                    translate(
+                    translate3d(
                         calc(
                             -50% +
                             ${x}px
                         ),
-                        -50%
+                        -50%,
+                        0
                     )
                     scale(
                         ${
@@ -1126,11 +1381,27 @@ function positionCenterMedia(
 
 
                 media.style.opacity =
-                    opacity;
+                    isActive
+                        ? 1
+                        : Math.max(
+                            0.08,
+                            1 -
+                            (
+                                distance *
+                                0.30
+                            )
+                        );
 
 
                 media.style.filter =
-                    blur;
+                    isActive
+                        ? 'none'
+                        : `blur(
+                            ${
+                                distance *
+                                mediaBlur
+                            }px
+                        )`;
 
 
                 media.style.zIndex =
@@ -1145,11 +1416,26 @@ function positionCenterMedia(
 
 
             const y =
-                relativeIndex *
+                physicalRelative *
                 mediaSpacing;
 
 
-            const opacity =
+            media.style.transform = `
+                translate3d(
+                    -50%,
+                    calc(
+                        -50% +
+                        ${y}px
+                    ),
+                    0
+                )
+                scale(
+                    ${scale}
+                )
+            `;
+
+
+            media.style.opacity =
                 distance === 0
 
                     ? 1
@@ -1164,34 +1450,23 @@ function positionCenterMedia(
                     );
 
 
-            const blur =
-                distance *
-                mediaBlur;
-
-
-            media.style.transform = `
-                translate(
-                    -50%,
-                    calc(
-                        -50% +
-                        ${y}px
-                    )
-                )
-                scale(
-                    ${scale}
-                )
-            `;
-
-
-            media.style.opacity =
-                opacity;
-
-
             media.style.filter =
-                `blur(${blur}px)`;
+                `blur(
+                    ${
+                        distance *
+                        mediaBlur
+                    }px
+                )`;
+
+
+            media.style.zIndex =
+                distance === 0
+                    ? '3'
+                    : '1';
 
         }
     );
+
 }
 
 
@@ -1200,18 +1475,12 @@ function positionWheels(
     mediaPosition
 ) {
 
-    const isMobile =
-        window.innerWidth <=
-        768;
-
-
     positionCenterMedia(
-        projectPosition,
         mediaPosition
     );
 
 
-    if (isMobile) {
+    if (isMobile()) {
 
         return;
 
@@ -1239,12 +1508,12 @@ function positionWheels(
     leftItems.forEach(
         (
             item,
-            index
+            indexValue
         ) => {
 
             const relativeIndex =
                 getRelativeIndex(
-                    index,
+                    indexValue,
                     projectPosition,
                     totalProjects
                 );
@@ -1275,12 +1544,6 @@ function positionWheels(
                 radius;
 
 
-            const opacity =
-                getOpacity(
-                    relativeIndex
-                );
-
-
             item.style.left =
                 `${x}px`;
 
@@ -1290,7 +1553,9 @@ function positionWheels(
 
 
             item.style.opacity =
-                opacity;
+                getOpacity(
+                    relativeIndex
+                );
 
 
             item.style.transform = `
@@ -1310,12 +1575,12 @@ function positionWheels(
     rightItems.forEach(
         (
             item,
-            index
+            indexValue
         ) => {
 
             const relativeIndex =
                 getRelativeIndex(
-                    index,
+                    indexValue,
                     -projectPosition,
                     totalProjects
                 );
@@ -1346,12 +1611,6 @@ function positionWheels(
                 radius;
 
 
-            const opacity =
-                getOpacity(
-                    relativeIndex
-                );
-
-
             item.style.left =
                 `${
                     halfWidth -
@@ -1364,7 +1623,9 @@ function positionWheels(
 
 
             item.style.opacity =
-                opacity;
+                getOpacity(
+                    relativeIndex
+                );
 
 
             item.style.transform = `
@@ -1379,50 +1640,7 @@ function positionWheels(
 
         }
     );
-}
 
-
-let previousActiveProject =
-    getActiveProject(
-        currentPosition
-    );
-
-
-function checkActiveProject() {
-
-    const activeProject =
-        getActiveProject(
-            currentPosition
-        );
-
-
-    if (
-        activeProject !==
-        previousActiveProject
-    ) {
-
-        currentMediaPosition =
-            0;
-
-
-        targetMediaPosition =
-            0;
-
-
-        previousActiveProject =
-            activeProject;
-
-
-        updateMobileProjectInfo(
-            activeProject
-        );
-
-
-        updateMobileNeighbors(
-            activeProject
-        );
-
-    }
 }
 
 
@@ -1433,8 +1651,8 @@ function snapProject() {
             targetPosition
         );
 
-
     startRender();
+
 }
 
 
@@ -1445,14 +1663,42 @@ function snapMedia() {
             targetMediaPosition
         );
 
+    syncVideos();
 
     startRender();
+
+}
+
+
+function startRender() {
+
+    if (
+        animationFrame !==
+        null
+    ) {
+
+        return;
+
+    }
+
+    animationFrame =
+        requestAnimationFrame(
+            render
+        );
+
 }
 
 
 function handleProjectWheel(
     event
 ) {
+
+    if (isMobile()) {
+
+        return;
+
+    }
+
 
     event.preventDefault();
 
@@ -1462,7 +1708,8 @@ function handleProjectWheel(
 
 
     if (
-        event.deltaMode === 1
+        event.deltaMode ===
+        1
     ) {
 
         delta *=
@@ -1472,7 +1719,8 @@ function handleProjectWheel(
 
 
     if (
-        event.deltaMode === 2
+        event.deltaMode ===
+        2
     ) {
 
         delta *=
@@ -1516,9 +1764,6 @@ function handleProjectWheel(
     }
 
 
-    startRender();
-
-
     clearTimeout(
         projectSnapTimeout
     );
@@ -1526,19 +1771,29 @@ function handleProjectWheel(
 
     projectSnapTimeout =
         setTimeout(
-            () => {
-
-                snapProject();
-
-            },
+            snapProject,
             snapDelay
         );
+
+
+    startRender();
+
 }
 
 
 function handleMediaWheel(
     event
 ) {
+
+    if (
+        isMobile() ||
+        !mediaArea
+    ) {
+
+        return;
+
+    }
+
 
     const rect =
         mediaArea.getBoundingClientRect();
@@ -1547,13 +1802,10 @@ function handleMediaWheel(
     const isInside =
         event.clientX >=
             rect.left &&
-
         event.clientX <=
             rect.right &&
-
         event.clientY >=
             rect.top &&
-
         event.clientY <=
             rect.bottom;
 
@@ -1567,7 +1819,6 @@ function handleMediaWheel(
 
     event.preventDefault();
 
-
     event.stopPropagation();
 
 
@@ -1576,7 +1827,8 @@ function handleMediaWheel(
 
 
     if (
-        event.deltaMode === 1
+        event.deltaMode ===
+        1
     ) {
 
         delta *=
@@ -1586,7 +1838,8 @@ function handleMediaWheel(
 
 
     if (
-        event.deltaMode === 2
+        event.deltaMode ===
+        2
     ) {
 
         delta *=
@@ -1600,9 +1853,6 @@ function handleMediaWheel(
         mediaScrollSensitivity;
 
 
-    startRender();
-
-
     clearTimeout(
         mediaSnapTimeout
     );
@@ -1610,47 +1860,43 @@ function handleMediaWheel(
 
     mediaSnapTimeout =
         setTimeout(
-            () => {
-
-                snapMedia();
-
-            },
+            snapMedia,
             mediaSnapDelay
         );
+
+
+    startRender();
+
 }
 
 
 function render() {
 
+    const projectDelta =
+        targetPosition -
+        currentPosition;
+
+
+    const mediaDelta =
+        targetMediaPosition -
+        currentMediaPosition;
+
+
     currentPosition +=
-        (
-            targetPosition -
-            currentPosition
-        ) *
+        projectDelta *
         smoothness;
 
 
     checkActiveProject();
 
 
-    if (
-        window.innerWidth <=
-        768
-    ) {
-
-        updateMobileNeighbors(
-            targetPosition
-        );
-
-    }
-
-
     currentMediaPosition +=
+        mediaDelta *
         (
-            targetMediaPosition -
-            currentMediaPosition
-        ) *
-        mediaSmoothness;
+            isMobile()
+                ? 0.20
+                : mediaSmoothness
+        );
 
 
     positionWheels(
@@ -1711,539 +1957,195 @@ function render() {
         requestAnimationFrame(
             render
         );
+
 }
 
 
-function startRender() {
+function toggleMenu(
+    menu,
+    arrow
+) {
 
-    if (
-        animationFrame !==
-        null
-    ) {
+    if (!menu) {
 
         return;
 
     }
 
 
-    animationFrame =
-        requestAnimationFrame(
-            render
+    const isOpen =
+        menu.classList.contains(
+            'open'
         );
+
+
+    if (isOpen) {
+
+        menu.style.height =
+            `${menu.scrollHeight}px`;
+
+
+        requestAnimationFrame(
+            () => {
+
+                menu.style.height =
+                    '0px';
+
+                menu.style.opacity =
+                    '0';
+
+            }
+        );
+
+
+        menu.classList.remove(
+            'open'
+        );
+
+
+        if (arrow) {
+
+            arrow.classList.remove(
+                'open'
+            );
+
+        }
+
+
+        menu.addEventListener(
+            'transitionend',
+            () => {
+
+                menu.style.pointerEvents =
+                    'none';
+
+            },
+            {
+                once: true
+            }
+        );
+
+
+        return;
+
+    }
+
+
+    menu.classList.add(
+        'open'
+    );
+
+
+    menu.style.height =
+        '0px';
+
+
+    menu.style.opacity =
+        '0';
+
+
+    requestAnimationFrame(
+        () => {
+
+            menu.style.height =
+                `${menu.scrollHeight}px`;
+
+            menu.style.opacity =
+                '1';
+
+        }
+    );
+
+
+    menu.style.pointerEvents =
+        'auto';
+
+
+    if (arrow) {
+
+        arrow.classList.add(
+            'open'
+        );
+
+    }
+
+
+    menu.addEventListener(
+        'transitionend',
+        () => {
+
+            menu.style.height =
+                'auto';
+
+        },
+        {
+            once: true
+        }
+    );
+
 }
 
 
-leftWheel.addEventListener(
-    'wheel',
-    handleProjectWheel,
-    {
-        passive: false
-    }
-);
-
-
-rightWheel.addEventListener(
-    'wheel',
-    handleProjectWheel,
-    {
-        passive: false
-    }
-);
-
-
-mediaArea.addEventListener(
-    'wheel',
-    handleMediaWheel,
-    {
-        passive: false
-    }
-);
-
-
 const indexArrow =
-    index.querySelector(
-        '.index-content span:last-child'
-    );
-
-
-index.addEventListener(
-    'click',
-    () => {
-
-        const isOpen =
-            indexMenu.classList.contains(
-                'open'
-            );
-
-
-        if (isOpen) {
-
-            indexMenu.style.height =
-                `${indexMenu.scrollHeight}px`;
-
-
-            requestAnimationFrame(
-                () => {
-
-                    indexMenu.style.height =
-                        '0px';
-
-
-                    indexMenu.style.opacity =
-                        '0';
-
-                }
-            );
-
-
-            indexMenu.classList.remove(
-                'open'
-            );
-
-
-            if (indexArrow) {
-
-                indexArrow.classList.remove(
-                    'open'
-                );
-
-            }
-
-
-            indexMenu.addEventListener(
-                'transitionend',
-                () => {
-
-                    indexMenu.style.pointerEvents =
-                        'none';
-
-                },
-                {
-                    once: true
-                }
-            );
-
-
-            return;
-
-        }
-
-
-        indexMenu.classList.add(
-            'open'
-        );
-
-
-        indexMenu.style.height =
-            '0px';
-
-
-        indexMenu.style.opacity =
-            '0';
-
-
-        requestAnimationFrame(
-            () => {
-
-                indexMenu.style.height =
-                    `${indexMenu.scrollHeight}px`;
-
-
-                indexMenu.style.opacity =
-                    '1';
-
-            }
-        );
-
-
-        indexMenu.style.pointerEvents =
-            'auto';
-
-
-        if (indexArrow) {
-
-            indexArrow.classList.add(
-                'open'
-            );
-
-        }
-
-
-        indexMenu.addEventListener(
-            'transitionend',
-            () => {
-
-                indexMenu.style.height =
-                    'auto';
-
-            },
-            {
-                once: true
-            }
-        );
-
-    }
-);
+    index
+        ? index.querySelector(
+            '.index-content span:last-child'
+        )
+        : null;
 
 
 const aboutArrow =
-    about.querySelector(
-        '.about-content span:last-child'
+    about
+        ? about.querySelector(
+            '.about-content span:last-child'
+        )
+        : null;
+
+
+if (
+    index &&
+    indexMenu
+) {
+
+    index.addEventListener(
+        'click',
+        () => {
+
+            toggleMenu(
+                indexMenu,
+                indexArrow
+            );
+
+        }
     );
 
-
-about.addEventListener(
-    'click',
-    () => {
-
-        const isOpen =
-            aboutMenu.classList.contains(
-                'open'
-            );
+}
 
 
-        if (isOpen) {
+if (
+    about &&
+    aboutMenu
+) {
 
-            aboutMenu.style.height =
-                `${aboutMenu.scrollHeight}px`;
+    about.addEventListener(
+        'click',
+        () => {
 
-
-            requestAnimationFrame(
-                () => {
-
-                    aboutMenu.style.height =
-                        '0px';
-
-
-                    aboutMenu.style.opacity =
-                        '0';
-
-                }
-            );
-
-
-            aboutMenu.classList.remove(
-                'open'
-            );
-
-
-            if (aboutArrow) {
-
-                aboutArrow.classList.remove(
-                    'open'
-                );
-
-            }
-
-
-            aboutMenu.addEventListener(
-                'transitionend',
-                () => {
-
-                    aboutMenu.style.pointerEvents =
-                        'none';
-
-                },
-                {
-                    once: true
-                }
-            );
-
-
-            return;
-
-        }
-
-
-        aboutMenu.classList.add(
-            'open'
-        );
-
-
-        aboutMenu.style.height =
-            '0px';
-
-
-        aboutMenu.style.opacity =
-            '0';
-
-
-        requestAnimationFrame(
-            () => {
-
-                aboutMenu.style.height =
-                    `${aboutMenu.scrollHeight}px`;
-
-
-                aboutMenu.style.opacity =
-                    '1';
-
-            }
-        );
-
-
-        aboutMenu.style.pointerEvents =
-            'auto';
-
-
-        if (aboutArrow) {
-
-            aboutArrow.classList.add(
-                'open'
+            toggleMenu(
+                aboutMenu,
+                aboutArrow
             );
 
         }
+    );
 
+}
 
-        aboutMenu.addEventListener(
-            'transitionend',
-            () => {
 
-                aboutMenu.style.height =
-                    'auto';
-
-            },
-            {
-                once: true
-            }
-        );
-
-    }
-);
-
-
-let touchStartX = 0;
-
-
-let touchStartY = 0;
-
-
-let touchStartedOnMedia =
-    false;
-
-
-mainElement.addEventListener(
-    'touchstart',
-    (event) => {
-
-        if (
-            window.innerWidth >
-            768
-        ) {
-
-            return;
-
-        }
-
-
-        const target =
-            event.target;
-
-
-        if (
-            target.closest(
-                '.index, .index-menu, .about, .about-menu'
-            )
-        ) {
-
-            touchStartedOnMedia =
-                false;
-
-
-            return;
-
-        }
-
-
-        const touch =
-            event.touches[0];
-
-
-        touchStartX =
-            touch.clientX;
-
-
-        touchStartY =
-            touch.clientY;
-
-
-        touchStartedOnMedia =
-            Boolean(
-                target.closest(
-                    '.project-images'
-                )
-            );
-
-    },
-    {
-        passive: true
-    }
-);
-
-
-mainElement.addEventListener(
-    'touchend',
-    (event) => {
-
-        if (
-            window.innerWidth >
-            768
-        ) {
-
-            return;
-
-        }
-
-
-        const target =
-            event.target;
-
-
-        if (
-            target.closest(
-                '.index, .index-menu, .about, .about-menu'
-            )
-        ) {
-
-            return;
-
-        }
-
-
-        const touch =
-            event.changedTouches[0];
-
-
-        const deltaX =
-            touch.clientX -
-            touchStartX;
-
-
-        const deltaY =
-            touch.clientY -
-            touchStartY;
-
-
-        const distanceX =
-            Math.abs(
-                deltaX
-            );
-
-
-        const distanceY =
-            Math.abs(
-                deltaY
-            );
-
-
-        const threshold =
-            50;
-
-
-        if (
-            Math.max(
-                distanceX,
-                distanceY
-            ) <
-            threshold
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-            distanceX >
-            distanceY
-        ) {
-
-            if (
-                !touchStartedOnMedia
-            ) {
-
-                return;
-
-            }
-
-
-            if (
-                deltaX < 0
-            ) {
-
-                targetMediaPosition +=
-                    1;
-
-            } else {
-
-                targetMediaPosition -=
-                    1;
-
-            }
-
-
-            clearTimeout(
-                mediaSnapTimeout
-            );
-
-
-            mediaSnapTimeout =
-                setTimeout(
-                    () => {
-
-                        snapMedia();
-
-                    },
-                    mediaSnapDelay
-                );
-
-
-            startRender();
-
-
-            return;
-
-        }
-
-
-        if (
-            deltaY < 0
-        ) {
-
-            targetPosition +=
-                1;
-
-        } else {
-
-            targetPosition -=
-                1;
-
-        }
-
-
-        clearTimeout(
-            projectSnapTimeout
-        );
-
-
-        projectSnapTimeout =
-            setTimeout(
-                () => {
-
-                    snapProject();
-
-                },
-                snapDelay
-            );
-
-
-        startRender();
-
-    },
-    {
-        passive: true
-    }
-);
+const indexRows =
+    document.querySelectorAll(
+        '.index-row[data-project]'
+    );
 
 
 const indexToScreenProject = {
@@ -2265,22 +2167,12 @@ const indexToScreenProject = {
 };
 
 
-const indexRows =
-    document.querySelectorAll(
-        '.index-row[data-project]'
-    );
-
-
 indexRows.forEach(
-    (
-        row
-    ) => {
+    row => {
 
         row.addEventListener(
             'click',
-            (
-                event
-            ) => {
+            event => {
 
                 event.stopPropagation();
 
@@ -2345,100 +2237,31 @@ indexRows.forEach(
                 }
 
 
-                const startPosition =
-                    currentPosition;
-
-
-                const finalPosition =
-                    targetPosition +
+                targetPosition +=
                     difference;
 
 
-                const duration =
-                    750;
+                targetMediaPosition =
+                    0;
 
 
-                const startTime =
-                    performance.now();
+                currentMediaPosition =
+                    0;
 
 
-                function animateToProject(
-                    time
-                ) {
-
-                    const elapsed =
-                        time -
-                        startTime;
-
-
-                    const progress =
-                        Math.min(
-                            elapsed /
-                            duration,
-                            1
-                        );
-
-
-                    const eased =
-                        progress < 0.5
-
-                            ? 4 *
-                              progress *
-                              progress *
-                              progress
-
-                            : 1 -
-                              Math.pow(
-                                  -2 *
-                                  progress +
-                                  2,
-                                  3
-                              ) /
-                              2;
-
-
-                    targetPosition =
-                        startPosition +
-                        (
-                            finalPosition -
-                            startPosition
-                        ) *
-                        eased;
-
-
-                    targetMediaPosition =
-                        0;
-
-
-                    currentMediaPosition =
-                        0;
-
-
-                    startRender();
-
-
-                    if (
-                        progress <
-                        1
-                    ) {
-
-                        requestAnimationFrame(
-                            animateToProject
-                        );
-
-                    } else {
-
-                        targetPosition =
-                            finalPosition;
-
-                    }
-
-                }
-
-
-                requestAnimationFrame(
-                    animateToProject
+                clearTimeout(
+                    projectSnapTimeout
                 );
+
+
+                projectSnapTimeout =
+                    setTimeout(
+                        snapProject,
+                        snapDelay
+                    );
+
+
+                startRender();
 
             }
         );
@@ -2447,19 +2270,258 @@ indexRows.forEach(
 );
 
 
+let touchStartX = 0;
+
+let touchStartY = 0;
+
+let touchStartedOnMedia =
+    false;
+
+let touchStartedInUI =
+    false;
+
+
+mainElement.addEventListener(
+    'touchstart',
+    event => {
+
+        if (!isMobile()) {
+
+            return;
+
+        }
+
+
+        const target =
+            event.target;
+
+        const touch =
+            event.touches[0];
+
+
+        if (!touch) {
+
+            return;
+
+        }
+
+
+        touchStartX =
+            touch.clientX;
+
+        touchStartY =
+            touch.clientY;
+
+
+        touchStartedOnMedia =
+            target instanceof
+            Element &&
+            Boolean(
+                target.closest(
+                    '.project-images'
+                )
+            );
+
+
+        touchStartedInUI =
+            target instanceof
+            Element &&
+            Boolean(
+                target.closest(
+                    '.index, .index-menu, .about, .about-menu'
+                )
+            );
+
+    },
+    {
+        passive: true
+    }
+);
+
+
+mainElement.addEventListener(
+    'touchend',
+    event => {
+
+        if (
+            !isMobile() ||
+            touchStartedInUI
+        ) {
+
+            return;
+
+        }
+
+
+        const target =
+            event.target;
+
+        const touch =
+            event.changedTouches[0];
+
+
+        if (
+            !touch ||
+            (
+                target instanceof
+                Element &&
+                target.closest(
+                    '.index, .index-menu, .about, .about-menu'
+                )
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        const deltaX =
+            touch.clientX -
+            touchStartX;
+
+
+        const deltaY =
+            touch.clientY -
+            touchStartY;
+
+
+        const distanceX =
+            Math.abs(
+                deltaX
+            );
+
+
+        const distanceY =
+            Math.abs(
+                deltaY
+            );
+
+
+        const threshold =
+            50;
+
+
+        if (
+            Math.max(
+                distanceX,
+                distanceY
+            ) <
+            threshold
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            distanceX >
+            distanceY
+        ) {
+
+            if (
+                !touchStartedOnMedia
+            ) {
+
+                return;
+
+            }
+
+
+            targetMediaPosition +=
+                deltaX < 0
+                    ? 1
+                    : -1;
+
+
+            syncVideos();
+
+
+            clearTimeout(
+                mediaSnapTimeout
+            );
+
+
+            mediaSnapTimeout =
+                setTimeout(
+                    snapMedia,
+                    mediaSnapDelay
+                );
+
+
+            startRender();
+
+
+            return;
+
+        }
+
+
+        targetPosition +=
+            deltaY < 0
+                ? 1
+                : -1;
+
+
+        clearTimeout(
+            projectSnapTimeout
+        );
+
+
+        projectSnapTimeout =
+            setTimeout(
+                snapProject,
+                snapDelay
+            );
+
+
+        startRender();
+
+    },
+    {
+        passive: true
+    }
+);
+
+
+function handleResize() {
+
+    updateMobileIntro();
+
+    updateMobileNeighbors(
+        activeProject
+    );
+
+    syncVideos();
+
+    positionWheels(
+        currentPosition,
+        currentMediaPosition
+    );
+
+}
+
+
+window.addEventListener(
+    'resize',
+    handleResize
+);
+
+
+prepareVideos();
+
+createMobileProjectInfo();
+
+createMobileNeighbors();
+
+
+activateProject(
+    0
+);
+
+
 updateMobileIntro();
-
-
-updateMobileProjectInfo(
-    getActiveProject(
-        currentPosition
-    )
-);
-
-
-updateMobileNeighbors(
-    currentPosition
-);
 
 
 positionWheels(
@@ -2468,22 +2530,40 @@ positionWheels(
 );
 
 
-window.addEventListener(
-    'resize',
-    () => {
+if (leftWheel) {
 
-        updateMobileIntro();
+    leftWheel.addEventListener(
+        'wheel',
+        handleProjectWheel,
+        {
+            passive: false
+        }
+    );
+
+}
 
 
-        updateMobileNeighbors(
-            targetPosition
-        );
+if (rightWheel) {
+
+    rightWheel.addEventListener(
+        'wheel',
+        handleProjectWheel,
+        {
+            passive: false
+        }
+    );
+
+}
 
 
-        positionWheels(
-            currentPosition,
-            currentMediaPosition
-        );
+if (mediaArea) {
 
-    }
-);
+    mediaArea.addEventListener(
+        'wheel',
+        handleMediaWheel,
+        {
+            passive: false
+        }
+    );
+
+}
