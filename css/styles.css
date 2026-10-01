@@ -717,8 +717,7 @@ main {
         pointer-events: none;
         transition:
             transform 0.35s ease,
-            opacity 0.35s ease,
-            filter 0.35s ease;
+            opacity 0.35s ease;
     }
 
 
@@ -746,11 +745,11 @@ main {
         display: block;
         width: auto;
         height: 100%;
-        max-width: 100%;
+        max-width: none;
         object-fit: contain;
+        filter: none;
         pointer-events: none;
     }
-
 
     .mobile-neighbor-title {
         display: block;
