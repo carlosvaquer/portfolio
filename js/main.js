@@ -2373,6 +2373,147 @@ function checkActiveProject() {
 }
 
 
+/* SOUND */
+
+const SOUND_VOLUME = 1;
+
+const SOUND_PROJECT_SCROLL =
+    'assets/sounds/sound_01.mp3';
+
+const SOUND_MENU_CLICK =
+    'assets/sounds/sound_02.mp3';
+
+const SOUND_POOL_SIZE = 4;
+
+const SOUND_MIN_INTERVAL = 90;
+
+
+function createSoundPlayer(
+    src
+) {
+
+    const pool = [];
+
+    let nextIndex = 0;
+
+    let lastPlayTime = 0;
+
+
+    for (
+        let i = 0;
+        i < SOUND_POOL_SIZE;
+        i++
+    ) {
+
+        const audio =
+            new Audio(src);
+
+        audio.preload =
+            'auto';
+
+        audio.volume =
+            SOUND_VOLUME;
+
+        pool.push(audio);
+
+    }
+
+
+    return function play() {
+
+        const now =
+            performance.now();
+
+        if (
+            now - lastPlayTime <
+            SOUND_MIN_INTERVAL
+        ) {
+
+            return;
+
+        }
+
+        lastPlayTime = now;
+
+
+        const audio =
+            pool[nextIndex];
+
+        nextIndex =
+            (nextIndex + 1) %
+            pool.length;
+
+
+        try {
+
+            audio.currentTime = 0;
+
+            const promise =
+                audio.play();
+
+            if (
+                promise &&
+                promise.catch
+            ) {
+
+                /* Browsers block audio until the first click/key press */
+
+                promise.catch(
+                    () => {}
+                );
+
+            }
+
+        } catch (error) {}
+
+    };
+
+}
+
+
+const playProjectScrollSound =
+    createSoundPlayer(
+        SOUND_PROJECT_SCROLL
+    );
+
+const playMenuClickSound =
+    createSoundPlayer(
+        SOUND_MENU_CLICK
+    );
+
+
+/* Project wheel scroll sound: plays when a scroll starts and on every project step */
+
+let projectScrollSoundActive =
+    false;
+
+let lastProjectSoundStep =
+    0;
+
+
+function armProjectScrollSound() {
+
+    if (
+        projectScrollSoundActive
+    ) {
+
+        return;
+
+    }
+
+    projectScrollSoundActive =
+        true;
+
+    lastProjectSoundStep =
+        Math.round(
+            currentPosition
+        );
+
+    playProjectScrollSound();
+
+}
+
+
 /* SNAP */
 
 function snapProject() {
@@ -2413,6 +2554,9 @@ function handleProjectWheel(
 ) {
 
     event.preventDefault();
+
+
+    armProjectScrollSound();
 
 
     let delta =
@@ -2603,6 +2747,30 @@ function render() {
     checkActiveProject();
 
 
+    if (
+        projectScrollSoundActive
+    ) {
+
+        const soundStep =
+            Math.round(
+                currentPosition
+            );
+
+        if (
+            soundStep !==
+            lastProjectSoundStep
+        ) {
+
+            lastProjectSoundStep =
+                soundStep;
+
+            playProjectScrollSound();
+
+        }
+
+    }
+
+
     currentMediaPosition +=
         (
             targetMediaPosition -
@@ -2658,6 +2826,10 @@ function render() {
 
         animationFrame =
             null;
+
+
+        projectScrollSoundActive =
+            false;
 
 
         return;
@@ -2737,6 +2909,9 @@ const indexArrow =
 index.addEventListener(
     'click',
     () => {
+
+        playMenuClickSound();
+
 
         const isOpen =
             indexMenu.classList.contains(
@@ -2867,6 +3042,9 @@ const aboutArrow =
 about.addEventListener(
     'click',
     () => {
+
+        playMenuClickSound();
+
 
         const isOpen =
             aboutMenu.classList.contains(
@@ -3184,6 +3362,8 @@ mainElement.addEventListener(
 
 
         /* VERTICAL PROJECT */
+
+        armProjectScrollSound();
 
         if (
             deltaY <
@@ -3548,3 +3728,53 @@ window.addEventListener(
 
     }
 );
+
+
+/* COLOR MODE */
+
+const colorToggle =
+    document.querySelector(
+        '.color-toggle'
+    );
+
+
+if (colorToggle) {
+
+    colorToggle.addEventListener(
+        'click',
+        () => {
+
+            const root =
+                document.documentElement;
+
+            const isDark =
+                root.getAttribute(
+                    'data-theme'
+                ) === 'dark';
+
+
+            if (isDark) {
+
+                root.removeAttribute(
+                    'data-theme'
+                );
+
+            } else {
+
+                root.setAttribute(
+                    'data-theme',
+                    'dark'
+                );
+
+            }
+
+
+            colorToggle.setAttribute(
+                'aria-pressed',
+                String(!isDark)
+            );
+
+        }
+    );
+
+}

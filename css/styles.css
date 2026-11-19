@@ -106,6 +106,13 @@ li {
     --main-text-color: #050505;
     --light-grey: rgb(191, 191, 191);
 
+    --muted: rgb(180, 180, 180);
+    --arrow-color: rgb(220, 220, 220);
+    --panel-bg: rgba(238, 238, 238, 0.65);
+    --panel-hover: #dddddd;
+
+    color-scheme: light;
+
     --main-font: sans-serif;
 
     --font-s: 12px;
@@ -115,6 +122,63 @@ li {
     --pad-xs: 0.5rem;
     --pad-s: 1rem;
     --pad-xl: 5rem;
+}
+
+
+/* DARK MODE
+   Colours are swapped: the page background becomes the original text
+   colour and the text becomes the original soft white of the background. */
+
+:root[data-theme="dark"] {
+    --main-bg-color: #050505;
+    --main-text-color: rgb(248, 248, 248);
+
+    --muted: rgb(125, 125, 125);
+    --arrow-color: rgb(70, 70, 70);
+    --panel-bg: rgba(32, 32, 32, 0.65);
+    --panel-hover: #262626;
+
+    color-scheme: dark;
+}
+
+body,
+main {
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+}
+
+
+/* COLOR MODE TOGGLE */
+
+.color-toggle {
+    /* The wheel (.projects) is position:absolute and sits later in the DOM,
+       so it paints above static elements. position + z-index lifts the
+       button above it so the wheel items can't cover part of the text. */
+    position: relative;
+    z-index: 20;
+
+    display: inline-block;
+    margin-top: var(--pad-xs);
+    padding: 0;
+
+    border: 0;
+    background: none;
+
+    font: inherit;
+    line-height: 1.2;
+    text-align: left;
+    color: var(--main-text-color);
+
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+
+    transition: color 0.3s ease;
+}
+
+.color-toggle:hover {
+    color: var(--muted);
 }
 
 
@@ -234,7 +298,7 @@ main {
     border-radius: 5rem;
     cursor: pointer;
 
-    background-color: rgba(238, 238, 238, 0.65);
+    background-color: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     transition: background-color 0.3s ease;
@@ -250,17 +314,17 @@ main {
 }
 
 .index-content span:last-child {
-    color: rgb(180, 180, 180);
+    color: var(--muted);
     transform: rotate(90deg);
     transition: color 0.3s ease;
 }
 
 .index:hover {
-    background-color: #dddddd;
+    background-color: var(--panel-hover);
 }
 
 .index:hover .index-content span:last-child {
-    color: #050505;
+    color: var(--main-text-color);
 }
 
 
@@ -277,7 +341,7 @@ main {
     display: flex;
     flex-direction: column;
 
-    background-color: rgba(238, 238, 238, 0.65);
+    background-color: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
 
@@ -304,23 +368,23 @@ main {
 
     padding: var(--pad-xs);
 
-    color: #050505;
+    color: var(--main-text-color);
 
     transition: color 0.3s ease;
 }
 
 .index-header {
-    color: rgb(180, 180, 180);
+    color: var(--muted);
 }
 
 .index-row:not(.index-header):hover {
-    color: rgb(180, 180, 180);
+    color: var(--muted);
     cursor: pointer;
 }
 
 
 .index-content span:last-child {
-    color: rgb(220, 220, 220);
+    color: var(--arrow-color);
     transform: rotate(90deg);
     transition:
         color 0.1s ease,
@@ -353,7 +417,7 @@ main {
     border-radius: 5rem;
     cursor: pointer;
 
-    background-color: rgba(238, 238, 238, 0.65);
+    background-color: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     transition: background-color 0.3s ease;
@@ -370,17 +434,17 @@ main {
 }
 
 .about-content span:last-child {
-    color: rgb(180, 180, 180);
+    color: var(--muted);
     transform: rotate(-90deg);
     transition: color 0.3s ease;
 }
 
 .about:hover {
-    background-color: #dddddd;
+    background-color: var(--panel-hover);
 }
 
 .about:hover .about-content span:last-child {
-    color: #050505;
+    color: var(--main-text-color);
 }
 
 
@@ -397,7 +461,7 @@ main {
     display: flex;
     flex-direction: column;
 
-    background-color: rgba(238, 238, 238, 0.65);
+    background-color: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
 
@@ -425,13 +489,13 @@ main {
 
     padding: var(--pad-xs);
 
-    color: #050505;
+    color: var(--main-text-color);
 }
 
 .about-item > span:first-child {
     width: 100%;
 
-    color: rgb(180, 180, 180);
+    color: var(--muted);
 
     padding-bottom: var(--pad-xs);
 
@@ -443,7 +507,7 @@ main {
 }
 
 .about-content span:last-child {
-    color: rgb(220, 220, 220);
+    color: var(--arrow-color);
     transform: rotate(-90deg);
     transition:
         color 0.1s ease,
